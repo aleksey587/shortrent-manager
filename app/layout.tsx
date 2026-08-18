@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'ShortRent Manager',
-  description: 'Διαχείριση βραχυχρόνιων μισθώσεων & ΑΑΔΕ',
+  title: 'GreekHost — Διαχείριση Βραχυχρόνιων Μισθώσεων & ΑΑΔΕ',
+  description: 'Η No.1 εφαρμογή για ιδιοκτήτες Airbnb στην Ελλάδα. Ημερολόγιο, συγχρονισμός κρατήσεων, φόροι & δηλώσεις ΑΑΔΕ.',
 }
 
 export default function RootLayout({

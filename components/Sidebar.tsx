@@ -45,8 +45,8 @@ export default function Sidebar() {
           🏠
         </div>
         <div>
-          <div className="font-semibold text-gray-900 text-sm leading-tight">ShortRent</div>
-          <div className="text-xs text-gray-400">Manager</div>
+          <div className="font-bold text-gray-900 text-base leading-tight">GreekHost</div>
+          <div className="text-[11px] text-blue-600 font-medium">Bnb & Tax Manager</div>
         </div>
       </div>
 
