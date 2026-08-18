@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, Mail, X, Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react'
+import { MessageSquare, Mail, X, Send, CheckCircle2, Loader2 } from 'lucide-react'
 
 export default function SupportModal({ isMobile = false }: { isMobile?: boolean }) {
   const [open, setOpen] = useState(false)
+  const [senderEmail, setSenderEmail] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,7 +23,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
       const res = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message }),
+        body: JSON.stringify({ subject, message, senderEmail }),
       })
 
       const data = await res.json()
@@ -37,7 +38,8 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
         setOpen(false)
         setMessage('')
         setSubject('')
-      }, 3000)
+        setSenderEmail('')
+      }, 3500)
     } catch (err: any) {
       setError(err.message || 'Παρουσιάστηκε σφάλμα. Δοκιμάστε ξανά.')
     } finally {
@@ -85,15 +87,28 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
                 <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle2 size={26} />
                 </div>
-                <h4 className="font-bold text-emerald-950 text-base">Το μήνυμά σας ελήφθη!</h4>
+                <h4 className="font-bold text-emerald-950 text-base">Το μήνυμά σας στάλθηκε επιτυχώς!</h4>
                 <p className="text-xs text-emerald-800 leading-relaxed">
-                  Ευχαριστούμε για την επικοινωνία. Η ομάδα του GreekHost θα επικοινωνήσει μαζί σας σύντομα στο email του λογαριασμού σας.
+                  Το λάβαμε απευθείας και θα επικοινωνήσουμε μαζί σας σύντομα στο email σας.
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSendDirect} className="space-y-4">
+              <form onSubmit={handleSendDirect} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
+                    Το Email σας (για να σας απαντήσουμε)
+                  </label>
+                  <input
+                    type="email"
+                    value={senderEmail}
+                    onChange={e => setSenderEmail(e.target.value)}
+                    placeholder="το-email-σας@example.com"
+                    className="w-full px-3.5 py-2.5 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
                     Θέμα Μηνύματος *
                   </label>
                   <input
@@ -107,7 +122,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                  <label className="block text-xs font-bold text-gray-800 mb-1">
                     Το Μήνυμά σας *
                   </label>
                   <textarea
@@ -144,15 +159,9 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
                   )}
                 </button>
 
-                <div className="pt-2 text-center border-t border-gray-100">
+                <div className="pt-1 text-center">
                   <p className="text-[11px] text-gray-400">
-                    Ή στείλτε απευθείας στο{' '}
-                    <a
-                      href={`mailto:${supportEmail}`}
-                      className="text-blue-600 hover:underline font-semibold"
-                    >
-                      {supportEmail}
-                    </a>
+                    Απευθείας email: <span className="font-semibold text-gray-600">{supportEmail}</span>
                   </p>
                 </div>
               </form>
