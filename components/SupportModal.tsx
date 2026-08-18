@@ -1,30 +1,48 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, Mail, X, Send, CheckCircle2 } from 'lucide-react'
+import { MessageSquare, Mail, X, Send, CheckCircle2, Loader2, Sparkles } from 'lucide-react'
 
 export default function SupportModal({ isMobile = false }: { isMobile?: boolean }) {
   const [open, setOpen] = useState(false)
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const supportEmail = 'gjokas.al@gmail.com'
 
-  const handleSendEmail = (e: React.FormEvent) => {
+  const handleSendDirect = async (e: React.FormEvent) => {
     e.preventDefault()
-    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(
-      subject ? `GreekHost — ${subject}` : 'GreekHost — Ερώτηση / Υποστήριξη'
-    )}&body=${encodeURIComponent(message)}`
-    
-    window.location.href = mailtoUrl
-    setSent(true)
-    setTimeout(() => {
-      setSent(false)
-      setOpen(false)
-      setMessage('')
-      setSubject('')
-    }, 2500)
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, message }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Σφάλμα κατά την αποστολή.')
+      }
+
+      setSent(true)
+      setTimeout(() => {
+        setSent(false)
+        setOpen(false)
+        setMessage('')
+        setSubject('')
+      }, 3000)
+    } catch (err: any) {
+      setError(err.message || 'Παρουσιάστηκε σφάλμα. Δοκιμάστε ξανά.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -38,7 +56,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
           <div
             className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-gray-100 space-y-5 animate-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
@@ -46,12 +64,12 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
             {/* Header */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <Mail size={20} />
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md">
+                  <MessageSquare size={20} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-lg">Επικοινωνία & Υποστήριξη</h3>
-                  <p className="text-xs text-gray-500">Είμαστε εδώ για ό,τι χρειαστείτε</p>
+                  <h3 className="font-extrabold text-gray-900 text-lg">Άμεση Επικοινωνία & Support</h3>
+                  <p className="text-xs text-gray-500">Στείλτε μας το μήνυμά σας κατευθείαν μέσα από την εφαρμογή</p>
                 </div>
               </div>
               <button
@@ -62,68 +80,83 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
               </button>
             </div>
 
-            {/* Direct Email Card */}
-            <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
-                  Απευθείας Email
-                </span>
-                <span className="font-semibold text-gray-900 text-sm">{supportEmail}</span>
-              </div>
-              <a
-                href={`mailto:${supportEmail}?subject=GreekHost%20Support`}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
-              >
-                <Mail size={13} />
-                <span>Άνοιγμα Email</span>
-              </a>
-            </div>
-
-            {/* Quick Contact Form */}
-            <form onSubmit={handleSendEmail} className="space-y-3.5 pt-1">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Θέμα Μηνύματος
-                </label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={e => setSubject(e.target.value)}
-                  placeholder="π.χ. Ερώτηση για το iCal Sync ή τους φόρους"
-                  required
-                  className="w-full px-3.5 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Το Μήνυμά σας
-                </label>
-                <textarea
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  placeholder="Γράψτε μας την ερώτηση ή την πρότασή σας..."
-                  required
-                  rows={4}
-                  className="w-full px-3.5 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-              </div>
-
-              {sent ? (
-                <div className="bg-emerald-50 text-emerald-800 text-xs font-semibold p-3 rounded-xl flex items-center justify-center gap-2 border border-emerald-200">
-                  <CheckCircle2 size={16} />
-                  <span>Το μήνυμα ετοιμάστηκε στο πρόγραμμα email σας!</span>
+            {sent ? (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center space-y-3 animate-in zoom-in-95 duration-200">
+                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 size={26} />
                 </div>
-              ) : (
+                <h4 className="font-bold text-emerald-950 text-base">Το μήνυμά σας ελήφθη!</h4>
+                <p className="text-xs text-emerald-800 leading-relaxed">
+                  Ευχαριστούμε για την επικοινωνία. Η ομάδα του GreekHost θα επικοινωνήσει μαζί σας σύντομα στο email του λογαριασμού σας.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSendDirect} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                    Θέμα Μηνύματος *
+                  </label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={e => setSubject(e.target.value)}
+                    placeholder="π.χ. Ερώτηση για συγχρονισμό ημερολογίου Airbnb / φόρους"
+                    required
+                    className="w-full px-3.5 py-2.5 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                    Το Μήνυμά σας *
+                  </label>
+                  <textarea
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    placeholder="Γράψτε εδώ την ερώτηση, την παρατήρηση ή την πρότασή σας..."
+                    required
+                    rows={4}
+                    className="w-full px-3.5 py-2.5 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-2xs"
+                  />
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 text-red-700 text-xs p-3 rounded-xl border border-red-200">
+                    {error}
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2"
+                  disabled={loading}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <Send size={15} />
-                  <span>Αποστολή Μηνύματος</span>
+                  {loading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Αποστολή Μηνύματος...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={15} />
+                      <span>Αποστολή Μηνύματος</span>
+                    </>
+                  )}
                 </button>
-              )}
-            </form>
+
+                <div className="pt-2 text-center border-t border-gray-100">
+                  <p className="text-[11px] text-gray-400">
+                    Ή στείλτε απευθείας στο{' '}
+                    <a
+                      href={`mailto:${supportEmail}`}
+                      className="text-blue-600 hover:underline font-semibold"
+                    >
+                      {supportEmail}
+                    </a>
+                  </p>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
