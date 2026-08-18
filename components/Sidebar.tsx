@@ -17,6 +17,7 @@ import {
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import SupportModal from '@/components/SupportModal'
+import InstallAppModal from '@/components/InstallAppModal'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Επισκόπηση', shortLabel: 'Αρχική' },
@@ -83,6 +84,9 @@ export default function Sidebar() {
           </div>
           <p className="text-[11px] text-blue-700 mt-0.5">Από 4,08 € / μήνα</p>
         </Link>
+
+        {/* Install App Trigger Button */}
+        <InstallAppModal />
 
         {/* Support & Contact Modal */}
         <SupportModal />
