@@ -258,7 +258,7 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* Bookings table */}
+      {/* Bookings list */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
           <BookOpen size={40} className="text-gray-300 mx-auto mb-3" />
@@ -266,76 +266,141 @@ export default function BookingsPage() {
           <p className="text-gray-400 text-sm mt-1">Προσθέστε χειροκίνητα ή κάντε sync από πλατφόρμα.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ακίνητο</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Επισκέπτης</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-in</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-out</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Νύχτες</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Σύνολο</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Πλατφόρμα</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ενέργειες</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filtered.map(booking => {
-                  const prop = properties.find(p => p.id === booking.property_id)
-                  return (
-                    <tr key={booking.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: prop?.color ?? '#3b82f6' }} />
-                          <span className="font-medium text-gray-900 truncate max-w-32">
-                            {prop?.name ?? '—'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">{booking.guest_name || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {format(new Date(booking.check_in), 'd MMM yyyy', { locale: el })}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {format(new Date(booking.check_out), 'd MMM yyyy', { locale: el })}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">{booking.nights}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
+        <>
+          {/* Mobile Card List (md:hidden) */}
+          <div className="md:hidden space-y-3">
+            {filtered.map(booking => {
+              const prop = properties.find(p => p.id === booking.property_id)
+              return (
+                <div
+                  key={booking.id}
+                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: prop?.color ?? '#3b82f6' }}
+                      />
+                      <span className="font-bold text-gray-900 text-sm">{prop?.name ?? '—'}</span>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLATFORM_COLORS[booking.platform] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {PLATFORM_LABELS[booking.platform] ?? booking.platform}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold">Επισκέπτης</span>
+                      <span className="font-semibold text-gray-800">{booking.guest_name || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold">Σύνολο / Νύχτες</span>
+                      <span className="font-bold text-emerald-700">
                         {booking.total_price ? `€${booking.total_price.toLocaleString('el-GR', { minimumFractionDigits: 2 })}` : '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PLATFORM_COLORS[booking.platform] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {PLATFORM_LABELS[booking.platform] ?? booking.platform}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <ShareBookingModal
-                            booking={{
-                              ...booking,
-                              propertyName: prop?.name,
-                              amaNumber: prop?.ama_number,
-                            }}
-                          />
-                          <button
-                            onClick={() => deleteBooking(booking.id)}
-                            className="text-gray-300 hover:text-red-500 p-1 rounded transition-colors"
-                            title="Διαγραφή"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        <span className="text-gray-500 font-normal text-[11px]"> ({booking.nights} ν.)</span>
+                      </span>
+                    </div>
+                    <div className="col-span-2 pt-1 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-600">
+                      <span>{format(new Date(booking.check_in), 'd MMM yyyy', { locale: el })}</span>
+                      <span>➔</span>
+                      <span>{format(new Date(booking.check_out), 'd MMM yyyy', { locale: el })}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      onClick={() => deleteBooking(booking.id)}
+                      className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                      title="Διαγραφή"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <ShareBookingModal
+                      booking={{
+                        ...booking,
+                        propertyName: prop?.name,
+                        amaNumber: prop?.ama_number,
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
+
+          {/* Desktop Table (hidden md:block) */}
+          <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ακίνητο</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Επισκέπτης</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-in</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-out</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Νύχτες</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Σύνολο</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Πλατφόρμα</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ενέργειες</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filtered.map(booking => {
+                    const prop = properties.find(p => p.id === booking.property_id)
+                    return (
+                      <tr key={booking.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: prop?.color ?? '#3b82f6' }} />
+                            <span className="font-medium text-gray-900 truncate max-w-32">
+                              {prop?.name ?? '—'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{booking.guest_name || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {format(new Date(booking.check_in), 'd MMM yyyy', { locale: el })}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {format(new Date(booking.check_out), 'd MMM yyyy', { locale: el })}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{booking.nights}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {booking.total_price ? `€${booking.total_price.toLocaleString('el-GR', { minimumFractionDigits: 2 })}` : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PLATFORM_COLORS[booking.platform] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {PLATFORM_LABELS[booking.platform] ?? booking.platform}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <ShareBookingModal
+                              booking={{
+                                ...booking,
+                                propertyName: prop?.name,
+                                amaNumber: prop?.ama_number,
+                              }}
+                            />
+                            <button
+                              onClick={() => deleteBooking(booking.id)}
+                              className="text-gray-300 hover:text-red-500 p-1 rounded transition-colors"
+                              title="Διαγραφή"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
