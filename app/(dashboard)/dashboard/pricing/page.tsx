@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Sparkles, Shield, Building2, HelpCircle, ArrowRight, Zap, Award } from 'lucide-react'
+import { Check, Sparkles, Shield, Building2, HelpCircle, ArrowRight, Zap, Award, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
 export default function PricingPage() {
@@ -17,6 +17,7 @@ export default function PricingPage() {
       popular: false,
       buttonText: 'Τρέχον Πλάνο',
       buttonVariant: 'secondary',
+      stripeLink: null,
       features: [
         '1 Ακίνητο',
         'Ημερολόγιο & iCal Sync (Airbnb, Booking, VRBO)',
@@ -31,11 +32,14 @@ export default function PricingPage() {
       name: 'Active Host (Pro)',
       description: 'Για ιδιοκτήτες με 2-3 ακίνητα που θέλουν άμεση αποστολή στον λογιστή.',
       price: billingCycle === 'monthly' ? '4,99' : '4,08',
-      billedText: billingCycle === 'yearly' ? 'Χρέωση 49 € / έτος (2 μήνες δώρο!)' : 'Χρέωση ανά μήνα',
+      billedText: billingCycle === 'yearly' ? 'Χρέωση 49 € / έτος (2 μήνες δώρο!)' : 'Χρέωση 4,99 € ανά μήνα',
       period: '/ μήνα',
       popular: true,
-      buttonText: 'Αναβάθμιση σε Pro',
+      buttonText: billingCycle === 'yearly' ? 'Ετήσιο Pro (49 €)' : 'Μηνιαίο Pro (4,99 €)',
       buttonVariant: 'primary',
+      stripeLink: billingCycle === 'yearly'
+        ? 'https://buy.stripe.com/test_eVqfZa1i0dRHbxq3TYdfG02'
+        : 'https://buy.stripe.com/test_bJeeV6d0I7tjatmbmqdfG00',
       features: [
         'Έως 3 Ακίνητα',
         'Όλα τα χαρακτηριστικά του Starter',
@@ -50,11 +54,14 @@ export default function PricingPage() {
       name: 'Super Host (Business)',
       description: 'Για διαχειριστές με 4+ ακίνητα που υπάγονται στον κανόνα επιχειρηματικότητας.',
       price: billingCycle === 'monthly' ? '9,99' : '8,25',
-      billedText: billingCycle === 'yearly' ? 'Χρέωση 99 € / έτος (2 μήνες δώρο!)' : 'Χρέωση ανά μήνα',
+      billedText: billingCycle === 'yearly' ? 'Χρέωση 99 € / έτος (2 μήνες δώρο!)' : 'Χρέωση 9,99 € ανά μήνα',
       period: '/ μήνα',
       popular: false,
-      buttonText: 'Επιλογή Business',
+      buttonText: billingCycle === 'yearly' ? 'Ετήσιο Business (99 €)' : 'Μηνιαίο Business (9,99 €)',
       buttonVariant: 'primary',
+      stripeLink: billingCycle === 'yearly'
+        ? 'https://buy.stripe.com/test_5kQ6oA6Ck4h7eJC0HMdfG03'
+        : 'https://buy.stripe.com/test_eVq3co5yg3d36d6626dfG01',
       features: [
         'Απεριόριστα Ακίνητα (5+)',
         'Όλα τα χαρακτηριστικά του Pro',
@@ -69,19 +76,19 @@ export default function PricingPage() {
   const faqs = [
     {
       q: 'Μπορώ να χρησιμοποιήσω την εφαρμογή εντελώς δωρεάν;',
-      a: 'Ναι! Αν διαχειρίζεστε 1 ακίνητο, το Starter πλάνο είναι 100% δωρεάν για πάντα χωρίς κρυφές χρεώσεις.',
+      a: 'Ναι! Αν διαχειρίζεστε 1 ακίνητο, το Starter πλάνο είναι 100% δωρεάν για πάντα χωρίς καμία κρυφή χρέωση.',
     },
     {
       q: 'Πώς γίνεται η πληρωμή;',
-      a: 'Δεχόμαστε όλες τις πιστωτικές/χρεωστικές κάρτες μέσω ασφαλούς περιβάλλοντος Stripe (Visa, Mastercard, Apple Pay, Google Pay).',
+      a: 'Όλες οι πληρωμές γίνονται μέσω της ασφαλούς πύλης της Stripe με κάρτα (Visa, Mastercard), Apple Pay ή Google Pay.',
+    },
+    {
+      q: 'Πώς λειτουργεί η ετήσια συνδρομή;',
+      a: 'Με την ετήσια συνδρομή πληρώνετε εφάπαξ για όλο το έτος και κερδίζετε 2 μήνες εντελώς δωρεάν (π.χ. 49€ αντί για 60€).',
     },
     {
       q: 'Μπορώ να ακυρώσω τη συνδρομή μου ανά πάσα στιγμή;',
-      a: 'Φυσικά. Δεν υπάρχει καμία δέσμευση συμβολαίου. Μπορείτε να ακυρώσετε όποτε θέλετε με 1 κλικ.',
-    },
-    {
-      q: 'Τι γίνεται αν προσθέσω παραπάνω ακίνητα;',
-      a: 'Αν έχετε το δωρεάν πλάνο και προσθέσετε 2ο ή 3ο ακίνητο, η εφαρμογή θα σας προτείνει αυτόματα να μεταβείτε στο Pro πλάνο.',
+      a: 'Φυσικά. Δεν υπάρχει καμία δέσμευση συμβολαίου. Μπορείτε να διακόψετε τη συνδρομή σας όποτε επιθυμείτε με 1 κλικ.',
     },
   ]
 
@@ -175,16 +182,24 @@ export default function PricingPage() {
               </ul>
             </div>
 
-            <button
-              onClick={() => alert(`Επιλέξατε το πλάνο: ${plan.name}. Η σύνδεση με το σύστημα πληρωμών Stripe/Viva θα ενεργοποιηθεί στο live deployment!`)}
-              className={`w-full py-3 rounded-2xl text-sm font-semibold transition-all shadow-sm ${
-                plan.buttonVariant === 'primary'
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-              }`}
-            >
-              {plan.buttonText}
-            </button>
+            {plan.stripeLink ? (
+              <a
+                href={plan.stripeLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 rounded-2xl text-sm font-semibold transition-all shadow-sm bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+              >
+                <span>{plan.buttonText}</span>
+                <ExternalLink size={14} />
+              </a>
+            ) : (
+              <button
+                disabled
+                className="w-full py-3 rounded-2xl text-sm font-semibold transition-all bg-gray-100 text-gray-500 cursor-default"
+              >
+                {plan.buttonText}
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -202,7 +217,7 @@ export default function PricingPage() {
             </span>
             <h3 className="font-bold text-gray-900 text-base">Ασφάλιση Αστικής Ευθύνης Ακινήτου</h3>
             <p className="text-xs text-gray-600 leading-relaxed">
-              Εξασφαλίστε άμεσα ασφαλιστήριο συμβόλαιο με ειδικές τιμές για χρήστες του ShortRent Manager.
+              Εξασφαλίστε άμεσα ασφαλιστήριο συμβόλαιο με ειδικές τιμές για χρήστες του GreekHost.
             </p>
             <button
               onClick={() => alert('Σύντομα διαθέσιμο σε συνεργασία με κορυφαίες ασφαλιστικές εταιρείες!')}
@@ -225,7 +240,7 @@ export default function PricingPage() {
             </span>
             <h3 className="font-bold text-gray-900 text-base">Εξειδικευμένοι Φοροτεχνικοί Airbnb</h3>
             <p className="text-xs text-gray-600 leading-relaxed">
-              Συνδέστε το ShortRent Manager με το λογιστικό σας γραφείο ή βρείτε πιστοποιημένο συνεργάτη.
+              Συνδέστε το GreekHost με το λογιστικό σας γραφείο ή βρείτε πιστοποιημένο συνεργάτη.
             </p>
             <button
               onClick={() => alert('Σύντομα διαθέσιμο το δίκτυο πιστοποιημένων λογιστών βραχυχρόνιας μίσθωσης!')}
