@@ -38,8 +38,8 @@ export default function PricingPage() {
       buttonText: billingCycle === 'yearly' ? 'Ετήσιο Pro (49 €)' : 'Μηνιαίο Pro (4,99 €)',
       buttonVariant: 'primary',
       stripeLink: billingCycle === 'yearly'
-        ? 'https://buy.stripe.com/test_eVqfZa1i0dRHbxq3TYdfG02'
-        : 'https://buy.stripe.com/test_bJeeV6d0I7tjatmbmqdfG00',
+        ? 'https://buy.stripe.com/3cI28kfYi64c2j54l2eIw01'
+        : 'https://buy.stripe.com/7sY5kw9zU78gg9VbNueIw00',
       features: [
         'Έως 3 Ακίνητα',
         'Όλα τα χαρακτηριστικά του Starter',
@@ -60,8 +60,8 @@ export default function PricingPage() {
       buttonText: billingCycle === 'yearly' ? 'Ετήσιο Business (99 €)' : 'Μηνιαίο Business (9,99 €)',
       buttonVariant: 'primary',
       stripeLink: billingCycle === 'yearly'
-        ? 'https://buy.stripe.com/test_5kQ6oA6Ck4h7eJC0HMdfG03'
-        : 'https://buy.stripe.com/test_eVq3co5yg3d36d6626dfG01',
+        ? 'https://buy.stripe.com/fZu00cbI2bowaPBcRyeIw03'
+        : 'https://buy.stripe.com/7sY14gh2meAI9Lx18QeIw02',
       features: [
         'Απεριόριστα Ακίνητα (5+)',
         'Όλα τα χαρακτηριστικά του Pro',
