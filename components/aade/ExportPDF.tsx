@@ -47,7 +47,7 @@ export default function ExportPDF() {
       // Header
       doc.setFontSize(18)
       doc.setTextColor(30, 58, 138)
-      doc.text('ShortRent Manager', 14, 18)
+      doc.text('GreekHost', 14, 18)
       doc.setFontSize(12)
       doc.setTextColor(100, 100, 100)
       doc.text(`Ετήσια Φορολογική Αναφορά Βραχυχρόνιων Μισθώσεων — ${year}`, 14, 26)
@@ -197,11 +197,11 @@ export default function ExportPDF() {
       doc.setFontSize(8)
       doc.setTextColor(130, 130, 130)
       doc.text(
-        'ShortRent Manager · Έτοιμο αντίγραφο για φοροτεχνικό/λογιστή · myAADE / gsis.gr/taxisnet/short_term_letting',
+        'GreekHost · Έτοιμο αντίγραφο για φοροτεχνικό/λογιστή · myAADE / gsis.gr/taxisnet/short_term_letting',
         14, lastY + 8
       )
 
-      doc.save(`shortrent-φορολογικη-αναφορα-${year}.pdf`)
+      doc.save(`greekhost-φορολογικη-αναφορα-${year}.pdf`)
     } catch (err) {
       console.error('PDF error:', err)
       alert('Σφάλμα κατά τη δημιουργία PDF.')

@@ -6,6 +6,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'GreekHost — Διαχείριση Βραχυχρόνιων Μισθώσεων & ΑΑΔΕ',
   description: 'Η No.1 εφαρμογή για ιδιοκτήτες Airbnb στην Ελλάδα. Ημερολόγιο, συγχρονισμός κρατήσεων, φόροι & δηλώσεις ΑΑΔΕ.',
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
