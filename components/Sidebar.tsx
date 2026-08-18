@@ -26,7 +26,6 @@ const navItems = [
   { href: '/dashboard/calendar', icon: Calendar, label: 'Ημερολόγιο', shortLabel: 'Ημερολόγιο' },
   { href: '/dashboard/bookings', icon: BookOpen, label: 'Κρατήσεις', shortLabel: 'Κρατήσεις' },
   { href: '/dashboard/aade', icon: FileText, label: 'Φορολογικό & ΑΑΔΕ', shortLabel: 'ΑΑΔΕ / Φόροι' },
-  { href: '/dashboard/messages', icon: Inbox, label: 'Μηνύματα Support', shortLabel: 'Μηνύματα' },
   { href: '/dashboard/pricing', icon: Sparkles, label: 'Συνδρομές & Πλάνα', shortLabel: 'Pro' },
 ]
 
