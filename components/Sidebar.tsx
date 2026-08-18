@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import SupportModal from '@/components/SupportModal'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Επισκόπηση', shortLabel: 'Αρχική' },
@@ -83,9 +84,12 @@ export default function Sidebar() {
           <p className="text-[11px] text-blue-700 mt-0.5">Από 4,08 € / μήνα</p>
         </Link>
 
+        {/* Support & Contact Modal */}
+        <SupportModal />
+
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 w-full transition-all"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 w-full transition-all"
         >
           <LogOut size={18} />
           Αποσύνδεση
