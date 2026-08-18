@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { MessageSquare, Mail, X, Send, CheckCircle2, Loader2 } from 'lucide-react'
 
 export default function SupportModal({ isMobile = false }: { isMobile?: boolean }) {
@@ -12,6 +13,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const supabase = createClient()
   const supportEmail = 'gjokas.al@gmail.com'
 
   const handleSendDirect = async (e: React.FormEvent) => {
@@ -20,17 +22,23 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
     setError(null)
 
     try {
-      const res = await fetch('/api/support', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message, senderEmail }),
+      const { data: { user } } = await supabase.auth.getUser()
+      const emailToUse = senderEmail || user?.email || 'Χρήστης GreekHost'
+
+      // 1. Direct Supabase insert
+      await supabase.from('support_messages').insert({
+        user_id: user?.id || null,
+        user_email: emailToUse,
+        subject,
+        message,
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Σφάλμα κατά την αποστολή.')
-      }
+      // 2. Call API for background email dispatch
+      fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, message, senderEmail: emailToUse }),
+      }).catch(err => console.log('API email background notice:', err))
 
       setSent(true)
       setTimeout(() => {
