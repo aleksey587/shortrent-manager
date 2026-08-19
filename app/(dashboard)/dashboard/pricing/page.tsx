@@ -1,11 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { Check, Sparkles, Shield, Building2, HelpCircle, ArrowRight, Zap, Award, ExternalLink } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Check, Sparkles, Shield, Building2, HelpCircle, ArrowRight, Zap, Award, ExternalLink, Crown } from 'lucide-react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { isSuperAdmin } from '@/lib/permissions'
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setUserEmail(user.email)
+    })
+  }, [])
+
+  const isSuper = isSuperAdmin(userEmail)
 
   const plans = [
     {
@@ -94,6 +106,29 @@ export default function PricingPage() {
 
   return (
     <div className="space-y-10 max-w-6xl mx-auto py-2">
+      {/* Super Admin VIP Card */}
+      {isSuper && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white rounded-3xl p-6 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur text-2xl flex items-center justify-center shadow-inner">
+              👑
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-amber-100">
+                Super Admin Account Active
+              </div>
+              <h2 className="text-xl font-black">Όλες οι λειτουργίες είναι ΞΕΚΛΕΙΔΩΤΕΣ (Super Host VIP)</h2>
+              <p className="text-xs text-amber-100 mt-0.5">
+                Συνδεδεμένος ως <strong className="underline">{userEmail}</strong> — Απεριόριστα ακίνητα, WhatsApp/Viber, AADE Export & iCal.
+              </p>
+            </div>
+          </div>
+          <span className="bg-white text-amber-900 font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs shrink-0">
+            LIFETIME BUSINESS
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 px-3.5 py-1 rounded-full text-xs font-semibold">

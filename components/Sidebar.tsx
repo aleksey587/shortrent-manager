@@ -15,10 +15,11 @@ import {
   Inbox,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import SupportModal from '@/components/SupportModal'
 import InstallAppModal from '@/components/InstallAppModal'
+import { isSuperAdmin } from '@/lib/permissions'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Επισκόπηση', shortLabel: 'Αρχική' },
@@ -34,6 +35,15 @@ export default function Sidebar() {
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setUserEmail(user.email)
+    })
+  }, [])
+
+  const isSuper = isSuperAdmin(userEmail)
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -49,7 +59,15 @@ export default function Sidebar() {
         </div>
         <div>
           <div className="font-bold text-gray-900 text-base leading-tight">GreekHost</div>
-          <div className="text-[11px] text-blue-600 font-medium">Bnb & Tax Manager</div>
+          <div className="text-[11px] font-medium flex items-center gap-1">
+            {isSuper ? (
+              <span className="text-amber-600 font-bold flex items-center gap-0.5">
+                👑 Super Admin
+              </span>
+            ) : (
+              <span className="text-blue-600">Bnb & Tax Manager</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -73,18 +91,27 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-3 pb-4 space-y-2">
-        {/* Upgrade pill box */}
-        <Link
-          href="/dashboard/pricing"
-          onClick={() => setMobileOpen(false)}
-          className="block bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-3 text-center transition-transform hover:scale-[1.02]"
-        >
-          <div className="flex items-center justify-center gap-1 text-xs font-bold text-blue-900">
-            <Sparkles size={13} className="text-amber-500" />
-            <span>Αναβάθμιση σε Pro</span>
+        {/* Upgrade pill box or Super Admin Active Badge */}
+        {isSuper ? (
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 rounded-2xl p-3 text-center shadow-xs">
+            <div className="flex items-center justify-center gap-1 text-xs font-bold text-amber-900">
+              <span>👑 Super Admin (Full Access)</span>
+            </div>
+            <p className="text-[11px] text-amber-800 mt-0.5 font-medium">Όλες οι λειτουργίες ξεκλείδωτες</p>
           </div>
-          <p className="text-[11px] text-blue-700 mt-0.5">Από 4,08 € / μήνα</p>
-        </Link>
+        ) : (
+          <Link
+            href="/dashboard/pricing"
+            onClick={() => setMobileOpen(false)}
+            className="block bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-3 text-center transition-transform hover:scale-[1.02]"
+          >
+            <div className="flex items-center justify-center gap-1 text-xs font-bold text-blue-900">
+              <Sparkles size={13} className="text-amber-500" />
+              <span>Αναβάθμιση σε Pro</span>
+            </div>
+            <p className="text-[11px] text-blue-700 mt-0.5">Από 4,08 € / μήνα</p>
+          </Link>
+        )}
 
         {/* Install App Trigger Button */}
         <InstallAppModal />

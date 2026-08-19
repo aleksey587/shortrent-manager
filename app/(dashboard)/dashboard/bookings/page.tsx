@@ -6,6 +6,7 @@ import { Plus, Trash2, RefreshCw, BookOpen, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { el } from 'date-fns/locale'
 import ShareBookingModal from '@/components/bookings/ShareBookingModal'
+import { isSuperAdmin } from '@/lib/permissions'
 
 const PLATFORM_LABELS: Record<string, string> = {
   airbnb: 'Airbnb',
@@ -51,6 +52,7 @@ export default function BookingsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
   const [filterProperty, setFilterProperty] = useState('all')
+  const [isProUser, setIsProUser] = useState(false)
 
   const [form, setForm] = useState({
     property_id: '',
@@ -67,12 +69,16 @@ export default function BookingsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: props }, { data: books }] = await Promise.all([
+    const [{ data: props }, { data: books }, { data: { user } }] = await Promise.all([
       supabase.from('properties').select('id, name, color, ama_number').order('created_at'),
       supabase.from('bookings').select('*').order('check_in', { ascending: false }),
+      supabase.auth.getUser(),
     ])
     setProperties(props ?? [])
     setBookings(books ?? [])
+    if (user && isSuperAdmin(user.email)) {
+      setIsProUser(true)
+    }
     if (props && props.length > 0 && !form.property_id) {
       setForm(f => ({ ...f, property_id: props[0].id }))
     }
@@ -317,6 +323,7 @@ export default function BookingsPage() {
                       <Trash2 size={16} />
                     </button>
                     <ShareBookingModal
+                      isPro={isProUser}
                       booking={{
                         ...booking,
                         propertyName: prop?.name,
@@ -378,6 +385,7 @@ export default function BookingsPage() {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <ShareBookingModal
+                              isPro={isProUser}
                               booking={{
                                 ...booking,
                                 propertyName: prop?.name,
