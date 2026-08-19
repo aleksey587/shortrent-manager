@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, ExternalLink, RefreshCw, Home } from 'lucide-react'
+import {
+  Plus, Trash2, RefreshCw, Home, ChevronDown, ChevronUp,
+  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check
+} from 'lucide-react'
+import MonthlyPricingPanel from '@/components/properties/MonthlyPricingPanel'
 
 const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
   airbnb: { label: 'Airbnb', color: 'bg-red-100 text-red-700' },
@@ -34,20 +38,23 @@ interface IcalSource {
   last_synced_at: string | null
 }
 
+const EMPTY_PROP = {
+  name: '', address: '', ama_number: '', color: PROPERTY_COLORS[0], description: ''
+}
+
 export default function PropertiesPage() {
   const supabase = createClient()
   const [properties, setProperties] = useState<Property[]>([])
   const [icalSources, setIcalSources] = useState<IcalSource[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddProperty, setShowAddProperty] = useState(false)
-  const [showAddIcal, setShowAddIcal] = useState<string | null>(null) // property id
+  const [editingProp, setEditingProp] = useState<Property | null>(null)
+  const [showAddIcal, setShowAddIcal] = useState<string | null>(null)
   const [syncing, setSyncing] = useState<string | null>(null)
+  const [expandedIcal, setExpandedIcal] = useState<string | null>(null)
 
-  // New property form
-  const [newProp, setNewProp] = useState({
-    name: '', address: '', ama_number: '', color: PROPERTY_COLORS[0], description: ''
-  })
-  // New iCal form
+  // Form state
+  const [newProp, setNewProp] = useState(EMPTY_PROP)
   const [newIcal, setNewIcal] = useState({ platform: 'airbnb', url: '' })
 
   useEffect(() => { fetchData() }, [])
@@ -67,7 +74,6 @@ export default function PropertiesPage() {
     e.preventDefault()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-
     await supabase.from('properties').insert({
       user_id: user.id,
       name: newProp.name,
@@ -76,8 +82,22 @@ export default function PropertiesPage() {
       color: newProp.color,
       description: newProp.description || null,
     })
-    setNewProp({ name: '', address: '', ama_number: '', color: PROPERTY_COLORS[0], description: '' })
+    setNewProp(EMPTY_PROP)
     setShowAddProperty(false)
+    fetchData()
+  }
+
+  async function updateProperty(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingProp) return
+    await supabase.from('properties').update({
+      name: editingProp.name,
+      address: editingProp.address || null,
+      ama_number: editingProp.ama_number || null,
+      color: editingProp.color,
+      description: editingProp.description || null,
+    }).eq('id', editingProp.id)
+    setEditingProp(null)
     fetchData()
   }
 
@@ -115,13 +135,22 @@ export default function PropertiesPage() {
       })
       const data = await res.json()
       if (data.error) alert('Σφάλμα sync: ' + data.error)
-      else alert(`Sync ολοκληρώθηκε! ${data.added ?? 0} νέες κρατήσεις.`)
+      else alert(`✅ Sync ολοκληρώθηκε! ${data.added ?? 0} νέες κρατήσεις.`)
     } catch {
       alert('Σφάλμα σύνδεσης.')
     }
     setSyncing(null)
     fetchData()
   }
+
+  // --- Property Form Modal (shared for add & edit) ---
+  const propModalData = editingProp ?? newProp
+  const setPropModalData = editingProp
+    ? (updater: any) => setEditingProp(p => p ? { ...p, ...updater(p) } : p)
+    : (updater: any) => setNewProp(p => ({ ...p, ...updater(p) }))
+
+  const isModalOpen = showAddProperty || !!editingProp
+  const closeModal = () => { setShowAddProperty(false); setEditingProp(null) }
 
   if (loading) return (
     <div className="flex items-center justify-center h-64 text-gray-400">
@@ -131,7 +160,8 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Ακίνητα</h1>
           <p className="text-gray-500 text-sm mt-0.5">{properties.length} ακίνητα συνολικά</p>
@@ -144,68 +174,129 @@ export default function PropertiesPage() {
             <span>💎 Πλάνο Starter (1/1 δωρεάν)</span>
           </Link>
           <button
-            onClick={() => setShowAddProperty(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm"
+            onClick={() => { setNewProp(EMPTY_PROP); setShowAddProperty(true) }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"
           >
             <Plus size={16} /> Νέο Ακίνητο
           </button>
         </div>
       </div>
 
-      {/* Add Property Modal */}
-      {showAddProperty && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold mb-4">Νέο Ακίνητο</h2>
-            <form onSubmit={addProperty} className="space-y-3">
+      {/* Add / Edit Property Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 space-y-5 overflow-y-auto max-h-[90vh]">
+            {/* Modal header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                  <Home size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-gray-900">
+                    {editingProp ? 'Επεξεργασία Ακινήτου' : 'Νέο Ακίνητο'}
+                  </h2>
+                  <p className="text-xs text-gray-400">Συμπληρώστε τα στοιχεία του ακινήτου σας</p>
+                </div>
+              </div>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={editingProp ? updateProperty : addProperty} className="space-y-4">
+              {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Όνομα *</label>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                  <Home size={13} className="text-blue-500" />
+                  Όνομα Ακινήτου *
+                </label>
                 <input
-                  required value={newProp.name}
-                  onChange={e => setNewProp(p => ({ ...p, name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="π.χ. Διαμέρισμα Αθήνα"
+                  required
+                  value={propModalData.name}
+                  onChange={e => setPropModalData((p: any) => ({ ...p, name: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="π.χ. Διαμέρισμα Αθήνα, Studio Κέρκυρα"
                 />
               </div>
+
+              {/* Address */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Διεύθυνση</label>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                  <MapPin size={13} className="text-emerald-500" />
+                  Διεύθυνση
+                </label>
                 <input
-                  value={newProp.address}
-                  onChange={e => setNewProp(p => ({ ...p, address: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="π.χ. Ερμού 10, Αθήνα"
+                  value={propModalData.address ?? ''}
+                  onChange={e => setPropModalData((p: any) => ({ ...p, address: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="π.χ. Ερμού 10, Αθήνα 10563"
                 />
               </div>
+
+              {/* AMA */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ΑΜΑ (Αριθμός Μητρώου Ακινήτου)</label>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                  <Hash size={13} className="text-purple-500" />
+                  ΑΜΑ (Αριθμός Μητρώου Ακινήτου)
+                </label>
                 <input
-                  value={newProp.ama_number}
-                  onChange={e => setNewProp(p => ({ ...p, ama_number: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Αριθμός από myProperty"
+                  value={propModalData.ama_number ?? ''}
+                  onChange={e => setPropModalData((p: any) => ({ ...p, ama_number: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Αριθμός από myProperty (ΑΑΔΕ)"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Βρείτε τον ΑΜΑ στο <a href="https://www1.aade.gr/saadeweb/web/guest/myProperty" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">myProperty (ΑΑΔΕ)</a>
+                </p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                  📝 Σημειώσεις / Περιγραφή
+                </label>
+                <textarea
+                  value={propModalData.description ?? ''}
+                  onChange={e => setPropModalData((p: any) => ({ ...p, description: e.target.value }))}
+                  rows={2}
+                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  placeholder="π.χ. 2ος όροφος, 2 υπνοδωμάτια, κωδικός κλειδοθήκης #4829"
                 />
               </div>
+
+              {/* Color picker */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Χρώμα στο ημερολόγιο</label>
-                <div className="flex gap-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-2">
+                  <Palette size={13} className="text-pink-500" />
+                  Χρώμα στο Ημερολόγιο
+                </label>
+                <div className="flex gap-2.5 flex-wrap">
                   {PROPERTY_COLORS.map(c => (
                     <button
                       key={c} type="button"
-                      onClick={() => setNewProp(p => ({ ...p, color: c }))}
-                      className={`w-7 h-7 rounded-full transition-transform ${newProp.color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''}`}
+                      onClick={() => setPropModalData((p: any) => ({ ...p, color: c }))}
+                      className={`w-8 h-8 rounded-full transition-all ${propModalData.color === c ? 'ring-3 ring-offset-2 ring-gray-500 scale-110' : 'hover:scale-105'}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
                 </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddProperty(false)}
-                  className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-xl text-sm hover:bg-gray-50">
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                >
                   Ακύρωση
                 </button>
-                <button type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-xl text-sm hover:bg-blue-700">
-                  Αποθήκευση
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  {editingProp ? 'Ενημέρωση' : 'Δημιουργία Ακινήτου'}
                 </button>
               </div>
             </form>
@@ -215,47 +306,75 @@ export default function PropertiesPage() {
 
       {/* Add iCal Modal */}
       {showAddIcal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
-            <h2 className="text-lg font-semibold mb-2">Σύνδεση Πλατφόρμας (iCal)</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Αντιγράψτε το iCal/ics URL από την πλατφόρμα σας και επικολλήστε το παρακάτω.
-            </p>
-            <form onSubmit={addIcalSource} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Πλατφόρμα</label>
-                <select
-                  value={newIcal.platform}
-                  onChange={e => setNewIcal(p => ({ ...p, platform: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="airbnb">Airbnb</option>
-                  <option value="booking">Booking.com</option>
-                  <option value="vrbo">VRBO</option>
-                  <option value="other">Άλλη</option>
-                </select>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center">
+                  <Link2 size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-gray-900">Σύνδεση Πλατφόρμας (iCal)</h2>
+                  <p className="text-xs text-gray-400">Αυτόματος συγχρονισμός κρατήσεων</p>
+                </div>
               </div>
+              <button onClick={() => setShowAddIcal(null)} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={addIcalSource} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">iCal URL *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Πλατφόρμα</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: 'airbnb', label: 'Airbnb', color: 'bg-red-50 border-red-300 text-red-700' },
+                    { key: 'booking', label: 'Booking.com', color: 'bg-blue-50 border-blue-300 text-blue-700' },
+                    { key: 'vrbo', label: 'VRBO', color: 'bg-teal-50 border-teal-300 text-teal-700' },
+                    { key: 'other', label: 'Άλλη', color: 'bg-gray-50 border-gray-300 text-gray-700' },
+                  ].map(pl => (
+                    <button
+                      key={pl.key}
+                      type="button"
+                      onClick={() => setNewIcal(p => ({ ...p, platform: pl.key }))}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                        newIcal.platform === pl.key
+                          ? pl.color + ' ring-2 ring-offset-1 ring-blue-400'
+                          : 'bg-gray-50 border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {pl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">iCal URL *</label>
                 <input
-                  required value={newIcal.url}
+                  required
+                  value={newIcal.url}
                   onChange={e => setNewIcal(p => ({ ...p, url: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                   placeholder="https://www.airbnb.com/calendar/ical/..."
                 />
               </div>
-              <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
-                <strong>Airbnb:</strong> Ημερολόγιο → Εξαγωγή ημερολογίου (.ics)<br />
-                <strong>Booking:</strong> Ημερολόγιο → Sync → Εξαγωγή
+
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-xs text-amber-800 space-y-1.5 leading-relaxed">
+                <p className="font-bold text-amber-900">📍 Πώς να βρείτε το iCal URL:</p>
+                <p><strong>Airbnb:</strong> Ημερολόγιο → Διαθεσιμότητα → Εξαγωγή Ημερολογίου (.ics)</p>
+                <p><strong>Booking.com:</strong> Ακίνητο → Ημερολόγιο → Sync → Εξαγωγή</p>
+                <p><strong>VRBO:</strong> Ημερολόγιο → Εξαγωγή</p>
               </div>
-              <div className="flex gap-3 pt-2">
+
+              <div className="flex gap-3">
                 <button type="button" onClick={() => setShowAddIcal(null)}
-                  className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-xl text-sm hover:bg-gray-50">
+                  className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50">
                   Ακύρωση
                 </button>
                 <button type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-xl text-sm hover:bg-blue-700">
-                  Προσθήκη
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-sm">
+                  Προσθήκη & Σύνδεση
                 </button>
               </div>
             </form>
@@ -265,88 +384,155 @@ export default function PropertiesPage() {
 
       {/* Properties list */}
       {properties.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
-          <Home size={40} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Δεν έχετε ακίνητα ακόμα</p>
-          <p className="text-gray-400 text-sm mt-1">Προσθέστε το πρώτο σας ακίνητο παραπάνω.</p>
+        <div className="bg-white rounded-3xl border border-dashed border-gray-300 p-16 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Home size={28} className="text-gray-300" />
+          </div>
+          <p className="text-gray-600 font-semibold text-base">Δεν έχετε ακίνητα ακόμα</p>
+          <p className="text-gray-400 text-sm mt-1">Πατήστε «Νέο Ακίνητο» για να ξεκινήσετε.</p>
+          <button
+            onClick={() => { setNewProp(EMPTY_PROP); setShowAddProperty(true) }}
+            className="mt-5 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors"
+          >
+            <Plus size={16} /> Προσθήκη Πρώτου Ακινήτου
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
           {properties.map(prop => {
             const propIcals = icalSources.filter(s => s.property_id === prop.id)
+            const isExpanded = expandedIcal === prop.id
+
             return (
-              <div key={prop.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div key={prop.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 {/* Property header */}
-                <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-50">
+                <div className="flex items-center gap-4 px-5 py-4">
                   <div
-                    className="w-4 h-4 rounded-full shrink-0"
+                    className="w-5 h-5 rounded-full shrink-0 shadow-sm"
                     style={{ backgroundColor: prop.color }}
                   />
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-semibold text-gray-900">{prop.name}</h2>
-                    <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
-                      {prop.address && <span>{prop.address}</span>}
-                      {prop.ama_number && <span>ΑΜΑ: {prop.ama_number}</span>}
+                    <h2 className="font-bold text-gray-900 text-base">{prop.name}</h2>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 mt-0.5">
+                      {prop.address && (
+                        <span className="flex items-center gap-1">
+                          <MapPin size={11} /> {prop.address}
+                        </span>
+                      )}
+                      {prop.ama_number && (
+                        <span className="flex items-center gap-1">
+                          <Hash size={11} /> ΑΜΑ: {prop.ama_number}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Link2 size={11} />
+                        {propIcals.length} {propIcals.length === 1 ? 'πλατφόρμα' : 'πλατφόρμες'}
+                      </span>
                     </div>
+                    {prop.description && (
+                      <p className="text-xs text-gray-400 mt-1 truncate">{prop.description}</p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => deleteProperty(prop.id)}
-                    className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                    title="Διαγραφή"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-
-                {/* iCal sources */}
-                <div className="px-6 py-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Συνδεδεμένες Πλατφόρμες</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
-                      onClick={() => setShowAddIcal(prop.id)}
-                      className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                      onClick={() => setEditingProp(prop)}
+                      className="text-gray-400 hover:text-blue-600 p-1.5 rounded-xl hover:bg-blue-50 transition-colors"
+                      title="Επεξεργασία"
                     >
-                      <Plus size={12} /> Προσθήκη
+                      <Edit2 size={15} />
+                    </button>
+                    <button
+                      onClick={() => deleteProperty(prop.id)}
+                      className="text-gray-400 hover:text-red-500 p-1.5 rounded-xl hover:bg-red-50 transition-colors"
+                      title="Διαγραφή"
+                    >
+                      <Trash2 size={15} />
                     </button>
                   </div>
+                </div>
 
-                  {propIcals.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">Δεν υπάρχουν συνδεδεμένες πλατφόρμες.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {propIcals.map(source => {
-                        const pl = PLATFORM_LABELS[source.platform] ?? PLATFORM_LABELS.other
-                        return (
-                          <div key={source.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${pl.color}`}>
-                              {pl.label}
-                            </span>
-                            <span className="text-xs text-gray-400 font-mono flex-1 truncate">
-                              {source.url}
-                            </span>
-                            {source.last_synced_at && (
-                              <span className="text-xs text-gray-400 shrink-0">
-                                Sync: {new Date(source.last_synced_at).toLocaleDateString('el-GR')}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => syncIcal(source.id, prop.id)}
-                              disabled={syncing === source.id}
-                              className="text-blue-500 hover:text-blue-700 p-1 rounded disabled:opacity-50"
-                              title="Sync τώρα"
-                            >
-                              <RefreshCw size={14} className={syncing === source.id ? 'animate-spin' : ''} />
-                            </button>
-                            <button
-                              onClick={() => deleteIcalSource(source.id)}
-                              className="text-gray-400 hover:text-red-500 p-1 rounded"
-                              title="Αφαίρεση"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        )
-                      })}
+                {/* Monthly Pricing Panel */}
+                <MonthlyPricingPanel propertyId={prop.id} propertyName={prop.name} />
+
+                {/* iCal sources section */}
+                <div className="border-t border-gray-100">
+                  <button
+                    onClick={() => setExpandedIcal(isExpanded ? null : prop.id)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-gray-50/70 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Link2 size={15} className="text-blue-500" />
+                      <span className="text-sm font-semibold text-gray-700">
+                        Συνδεδεμένες Πλατφόρμες (iCal)
+                      </span>
+                      {propIcals.length > 0 && (
+                        <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">
+                          {propIcals.length}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowAddIcal(prop.id) }}
+                        className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-0.5"
+                      >
+                        <Plus size={12} /> Προσθήκη
+                      </button>
+                      {isExpanded ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-5 pb-4">
+                      {propIcals.length === 0 ? (
+                        <div className="bg-gray-50 rounded-2xl p-5 text-center">
+                          <Link2 size={22} className="text-gray-300 mx-auto mb-2" />
+                          <p className="text-xs text-gray-400 font-medium">Δεν υπάρχουν συνδεδεμένες πλατφόρμες.</p>
+                          <button
+                            onClick={() => setShowAddIcal(prop.id)}
+                            className="mt-2 text-xs text-blue-600 hover:underline font-semibold"
+                          >
+                            + Προσθήκη Airbnb / Booking iCal
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {propIcals.map(source => {
+                            const pl = PLATFORM_LABELS[source.platform] ?? PLATFORM_LABELS.other
+                            return (
+                              <div key={source.id} className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3">
+                                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 ${pl.color}`}>
+                                  {pl.label}
+                                </span>
+                                <span className="text-xs text-gray-400 font-mono flex-1 truncate">
+                                  {source.url}
+                                </span>
+                                {source.last_synced_at && (
+                                  <span className="text-[10px] text-gray-400 shrink-0">
+                                    Sync: {new Date(source.last_synced_at).toLocaleDateString('el-GR')}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => syncIcal(source.id, prop.id)}
+                                  disabled={syncing === source.id}
+                                  className="text-blue-500 hover:text-blue-700 p-1.5 rounded-xl hover:bg-blue-50 disabled:opacity-50 transition-colors"
+                                  title="Sync τώρα"
+                                >
+                                  <RefreshCw size={14} className={syncing === source.id ? 'animate-spin' : ''} />
+                                </button>
+                                <button
+                                  onClick={() => deleteIcalSource(source.id)}
+                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-xl hover:bg-red-50 transition-colors"
+                                  title="Αφαίρεση"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
