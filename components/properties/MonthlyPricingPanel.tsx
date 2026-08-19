@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CalendarDays, ChevronDown, ChevronUp, Save, Euro } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronUp, Save, Euro, RefreshCw, Zap } from 'lucide-react'
 
 const MONTHS = [
   { key: 1, label: 'Ιανουάριος' },
@@ -39,6 +39,8 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [applyResult, setApplyResult] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) loadRates()
@@ -91,6 +93,28 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
+  }
+
+  async function applyToBookings(overwrite: boolean) {
+    setApplying(true)
+    setApplyResult(null)
+    try {
+      const res = await fetch('/api/recalculate-pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId, overwriteExisting: overwrite }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setApplyResult(`✅ Ενημερώθηκαν ${data.updated} κρατήσεις!`)
+      } else {
+        setApplyResult(`❌ Σφάλμα: ${data.error}`)
+      }
+    } catch {
+      setApplyResult('❌ Σφάλμα σύνδεσης.')
+    }
+    setApplying(false)
+    setTimeout(() => setApplyResult(null), 5000)
   }
 
   const currentMonth = new Date().getMonth() + 1
@@ -172,7 +196,7 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
                 })}
               </div>
 
-              <div className="pt-2 flex items-center gap-3">
+              <div className="pt-2 flex items-center gap-3 flex-wrap">
                 <button
                   type="submit"
                   disabled={saving}
@@ -188,10 +212,50 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
                 )}
               </div>
 
+              {/* Apply to existing bookings */}
+              <div className="mt-3 p-3.5 bg-blue-50 border border-blue-200 rounded-2xl space-y-2.5">
+                <p className="text-xs font-bold text-blue-900">
+                  ⚡ Εφαρμογή στις Υπάρχουσες Κρατήσεις
+                </p>
+                <p className="text-[10px] text-blue-700 leading-relaxed">
+                  Εφάρμοσε τις τιμές ανά μήνα σε κρατήσεις που ήρθαν από iCal/Airbnb και δεν έχουν ποσό.
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    disabled={applying}
+                    onClick={() => applyToBookings(false)}
+                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+                  >
+                    {applying ? <RefreshCw size={13} className="animate-spin" /> : <Zap size={13} />}
+                    {applying ? 'Εφαρμογή...' : 'Εφαρμογή σε κενές κρατήσεις'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={applying}
+                    onClick={() => {
+                      if (confirm('Θα αντικατασταθούν ΟΛΕΣ οι υπάρχουσες τιμές. Συνεχίζεις;')) {
+                        applyToBookings(true)
+                      }
+                    }}
+                    className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw size={13} />
+                    Αντικατάσταση ΟΛΩΝ
+                  </button>
+                </div>
+                {applyResult && (
+                  <p className="text-xs font-semibold text-blue-900 animate-in fade-in duration-300">
+                    {applyResult}
+                  </p>
+                )}
+              </div>
+
               <p className="text-[10px] text-gray-400 leading-relaxed pt-1">
                 💡 Όταν προσθέτεις χειροκίνητη κράτηση, η τιμή ανά νύχτα θα προτείνεται αυτόματα βάσει του μήνα.
               </p>
             </form>
+
           )}
         </div>
       )}
