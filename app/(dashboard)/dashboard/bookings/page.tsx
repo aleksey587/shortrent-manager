@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, RefreshCw, BookOpen, Search } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, BookOpen, Search, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { el } from 'date-fns/locale'
 import ShareBookingModal from '@/components/bookings/ShareBookingModal'
+import ImportCsvModal from '@/components/bookings/ImportCsvModal'
 import { isSuperAdmin } from '@/lib/permissions'
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -135,6 +136,34 @@ export default function BookingsPage() {
 
   const totalIncome = filtered.reduce((s, b) => s + (b.total_price ?? 0), 0)
 
+  const exportToCsv = () => {
+    if (filtered.length === 0) return
+    const headers = ['Ακίνητο', 'Επισκέπτης', 'Check-in', 'Check-out', 'Νύχτες', 'Σύνολο (€)', 'Πλατφόρμα', 'Σημειώσεις']
+    const rows = filtered.map(b => {
+      const prop = properties.find(p => p.id === b.property_id)
+      return [
+        `"${prop?.name || '—'}"`,
+        `"${b.guest_name || '—'}"`,
+        `"${b.check_in}"`,
+        `"${b.check_out}"`,
+        `"${b.nights}"`,
+        `"${b.total_price ? b.total_price.toFixed(2) : '0.00'}"`,
+        `"${b.platform}"`,
+        `"${b.notes || ''}"`,
+      ]
+    })
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `GreekHost_Bookings_${format(new Date(), 'yyyy-MM-dd')}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-64 text-gray-400">
       <RefreshCw className="animate-spin mr-2" size={20} /> Φόρτωση...
@@ -150,12 +179,32 @@ export default function BookingsPage() {
             {filtered.length} κρατήσεις · Σύνολο εσόδων: <strong>€{totalIncome.toLocaleString('el-GR', { minimumFractionDigits: 2 })}</strong>
           </p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm"
-        >
-          <Plus size={16} /> Νέα Κράτηση
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Import CSV Modal */}
+          {properties.length > 0 && (
+            <ImportCsvModal properties={properties} onSuccess={fetchData} />
+          )}
+
+          {/* Export CSV Button */}
+          <button
+            onClick={exportToCsv}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-all shadow-2xs disabled:opacity-50"
+            title="Εξαγωγή σε Excel / CSV"
+          >
+            <Download size={14} />
+            <span>Εξαγωγή CSV (Excel)</span>
+          </button>
+
+          {/* Add Booking */}
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm"
+          >
+            <Plus size={16} />
+            <span>Νέα Κράτηση</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
