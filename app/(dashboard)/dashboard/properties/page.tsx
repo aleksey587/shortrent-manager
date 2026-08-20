@@ -170,9 +170,7 @@ export default function PropertiesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const cleanNum = editingProp.cleaning_fee != null ? parseFloat(String(editingProp.cleaning_fee)) : 0
-
-    await supabase.from('properties').update({
+    const { error } = await supabase.from('properties').update({
       name: editingProp.name,
       address: editingProp.address || null,
       ama_number: editingProp.ama_number || null,
@@ -180,6 +178,11 @@ export default function PropertiesPage() {
       description: editingProp.description || null,
       cleaning_fee: isNaN(cleanNum) ? 0 : cleanNum,
     }).eq('id', editingProp.id)
+
+    if (error) {
+      alert('⚠️ Σφάλμα αποθήκευσης: ' + error.message + '\n\nΑν αναφέρει τη στήλη cleaning_fee, εκτελέστε το SQL migration στο Supabase SQL Editor.')
+      return
+    }
 
     // Save updated monthly rates
     if (Object.keys(modalRates).length > 0) {

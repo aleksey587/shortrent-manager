@@ -107,10 +107,16 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
 
     // 1. Update cleaning fee on property
     const cleanNum = cleaningFee ? parseFloat(cleaningFee) : 0
-    await supabase
+    const { error: propErr } = await supabase
       .from('properties')
       .update({ cleaning_fee: isNaN(cleanNum) ? 0 : cleanNum })
       .eq('id', propertyId)
+
+    if (propErr) {
+      setSaving(false)
+      alert('⚠️ Σφάλμα αποθήκευσης καθαριότητας: ' + propErr.message + '\n\nΠαρακαλώ εκτελέστε το SQL migration στο Supabase SQL Editor.')
+      return
+    }
 
     // 2. Upsert each month that has a value
     for (const [monthStr, priceStr] of Object.entries(rates)) {
