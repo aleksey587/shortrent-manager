@@ -22,6 +22,17 @@ export async function POST(request: NextRequest) {
     const { data: bookings, error } = await query
     if (error) throw error
 
+    // Fetch properties to get their cleaning_fee
+    const { data: userProps } = await supabase
+      .from('properties')
+      .select('id, cleaning_fee')
+      .eq('user_id', user.id)
+
+    const propCleaningMap: Record<string, number> = {}
+    for (const p of userProps ?? []) {
+      propCleaningMap[p.id] = p.cleaning_fee ? Number(p.cleaning_fee) : 0
+    }
+
     // Fetch all monthly_rates for this user grouped by property
     const { data: monthlyRates } = await supabase
       .from('monthly_rates')
@@ -79,12 +90,14 @@ export async function POST(request: NextRequest) {
       const startMs = new Date(b.check_in).getTime()
       const endMs = new Date(b.check_out).getTime()
       const nights = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)))
-      const total = parseFloat((nights * rate).toFixed(2))
+      const cleaningFee = propCleaningMap[b.property_id] ?? 0
+      const total = parseFloat(((nights * rate) + cleaningFee).toFixed(2))
 
       await supabase
         .from('bookings')
         .update({
           price_per_night: rate,
+          cleaning_fee: cleaningFee,
           total_price: total,
         })
         .eq('id', b.id)

@@ -28,6 +28,7 @@ interface Property {
   ama_number: string | null
   color: string
   description: string | null
+  cleaning_fee: number | null
 }
 
 interface IcalSource {
@@ -39,7 +40,7 @@ interface IcalSource {
 }
 
 const EMPTY_PROP = {
-  name: '', address: '', ama_number: '', color: PROPERTY_COLORS[0], description: ''
+  name: '', address: '', ama_number: '', color: PROPERTY_COLORS[0], description: '', cleaning_fee: ''
 }
 
 export default function PropertiesPage() {
@@ -81,6 +82,7 @@ export default function PropertiesPage() {
       ama_number: newProp.ama_number || null,
       color: newProp.color,
       description: newProp.description || null,
+      cleaning_fee: newProp.cleaning_fee ? parseFloat(String(newProp.cleaning_fee)) : 0,
     })
     setNewProp(EMPTY_PROP)
     setShowAddProperty(false)
@@ -96,6 +98,7 @@ export default function PropertiesPage() {
       ama_number: editingProp.ama_number || null,
       color: editingProp.color,
       description: editingProp.description || null,
+      cleaning_fee: editingProp.cleaning_fee ?? 0,
     }).eq('id', editingProp.id)
     setEditingProp(null)
     fetchData()
@@ -265,6 +268,29 @@ export default function PropertiesPage() {
                 />
               </div>
 
+              {/* Cleaning fee */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                  <Euro size={13} className="text-teal-500" />
+                  Τέλος Καθαριότητας (€)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">€</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={propModalData.cleaning_fee ?? ''}
+                    onChange={e => setPropModalData((p: any) => ({ ...p, cleaning_fee: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-xl pl-8 pr-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="π.χ. 50"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+                  💡 Προστίθεται αυτόματα σε κάθε κράτηση. <strong>Δεν φορολογείται</strong> — εμφανίζεται ξεχωριστά στο ΑΑΔΕ.
+                </p>
+              </div>
+
               {/* Color picker */}
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-2">
@@ -424,6 +450,16 @@ export default function PropertiesPage() {
                           <Hash size={11} /> ΑΜΑ: {prop.ama_number}
                         </span>
                       )}
+                      <span className="flex items-center gap-1">
+                        <Euro size={11} className="text-teal-600" />
+                        {prop.cleaning_fee && prop.cleaning_fee > 0 ? (
+                          <span className="text-teal-700 font-semibold bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
+                            Καθαριότητα: €{prop.cleaning_fee}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Χωρίς τέλος καθαρισμού</span>
+                        )}
+                      </span>
                       <span className="flex items-center gap-1">
                         <Link2 size={11} />
                         {propIcals.length} {propIcals.length === 1 ? 'πλατφόρμα' : 'πλατφόρμες'}

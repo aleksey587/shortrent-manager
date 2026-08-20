@@ -75,57 +75,73 @@ export default async function AadePage() {
           { q: 3, label: 'Γ΄ Τρίμηνο', months: [7, 8, 9] },
           { q: 4, label: 'Δ΄ Τρίμηνο', months: [10, 11, 12] },
         ]
-        const quarterIncome = quarters.map(({ q, label, months }) => {
-          const income = (bookings ?? [])
-            .filter(b => {
-              const year = parseInt(b.check_in.slice(0, 4))
-              const month = parseInt(b.check_in.slice(5, 7))
-              return year === currentYear && months.includes(month)
-            })
-            .reduce((sum, b) => sum + (b.total_price ?? 0), 0)
-          const count = (bookings ?? []).filter(b => {
+        const quarterData = quarters.map(({ q, label, months }) => {
+          const qBookings = (bookings ?? []).filter(b => {
             const year = parseInt(b.check_in.slice(0, 4))
             const month = parseInt(b.check_in.slice(5, 7))
             return year === currentYear && months.includes(month)
-          }).length
-          return { q, label, income, count }
+          })
+          const totalIncome = qBookings.reduce((sum, b) => sum + (b.total_price ?? 0), 0)
+          const cleaningTotal = qBookings.reduce((sum, b) => sum + ((b as any).cleaning_fee ?? 0), 0)
+          const rentalIncome = totalIncome - cleaningTotal
+          return { q, label, totalIncome, cleaningTotal, rentalIncome, count: qBookings.length }
         })
-        const yearTotal = quarterIncome.reduce((s, r) => s + r.income, 0)
+        const yearTotal = quarterData.reduce((s, r) => s + r.totalIncome, 0)
+        const yearRental = quarterData.reduce((s, r) => s + r.rentalIncome, 0)
+        const yearCleaning = quarterData.reduce((s, r) => s + r.cleaningTotal, 0)
 
         return (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
                 <TrendingUp size={17} className="text-purple-500" />
                 Έσοδα ανά Τρίμηνο — {currentYear}
               </h2>
-              <span className="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
-                Σύνολο: €{yearTotal.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
-              </span>
+              <div className="flex items-center gap-3 text-xs flex-wrap">
+                <span className="font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                  Σύνολο: €{yearTotal.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="font-bold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1 rounded-full">
+                  Φορολογητέο: €{yearRental.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+                </span>
+                {yearCleaning > 0 && (
+                  <span className="font-bold text-teal-700 bg-teal-50 border border-teal-200 px-3 py-1 rounded-full">
+                    Καθαριότητα: €{yearCleaning.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {quarterIncome.map(({ q, label, income, count }) => {
+              {quarterData.map(({ q, label, totalIncome, cleaningTotal, rentalIncome, count }) => {
                 const isCurrent = q === currentQ && currentYear === new Date().getFullYear()
                 return (
                   <div
                     key={q}
                     className={`rounded-2xl p-4 border ${
-                      isCurrent
-                        ? 'border-blue-300 bg-blue-50'
-                        : 'border-gray-100 bg-gray-50'
+                      isCurrent ? 'border-blue-300 bg-blue-50' : 'border-gray-100 bg-gray-50'
                     }`}
                   >
                     <p className={`text-xs font-bold mb-1 ${isCurrent ? 'text-blue-700' : 'text-gray-500'}`}>
                       {label} {isCurrent && '(τρέχον)'}
                     </p>
-                    <p className={`text-lg font-extrabold ${income > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
-                      €{income.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+                    <p className={`text-lg font-extrabold ${totalIncome > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                      €{totalIncome.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-[10px] text-gray-400 mt-0.5">{count} κρατήσεις</p>
-                    {income > 0 && (
-                      <p className="text-[10px] text-emerald-600 font-semibold mt-1">
-                        Φόρος ~€{(income * 0.15).toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+                    {cleaningTotal > 0 && (
+                      <p className="text-[10px] text-teal-600 mt-0.5">
+                        Καθαρ.: €{cleaningTotal.toFixed(2)}
                       </p>
+                    )}
+                    {rentalIncome > 0 && (
+                      <>
+                        <p className="text-[10px] text-purple-600 font-semibold mt-0.5">
+                          Φορολογητέο: €{rentalIncome.toFixed(2)}
+                        </p>
+                        <p className="text-[10px] text-emerald-600 font-semibold">
+                          Φόρος ~€{(rentalIncome * 0.15).toFixed(2)}
+                        </p>
+                      </>
                     )}
                   </div>
                 )

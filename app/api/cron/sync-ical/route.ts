@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   // Fetch ALL iCal sources across all users
   const { data: sources, error } = await supabase
     .from('ical_sources')
-    .select('id, property_id, url, platform, last_synced_at, properties!inner(user_id)')
+    .select('id, property_id, url, platform, last_synced_at, properties!inner(user_id, cleaning_fee)')
 
   if (error) {
     console.error('[Cron] Failed to fetch iCal sources:', error.message)
@@ -43,6 +43,10 @@ export async function GET(request: NextRequest) {
           continue
         }
       }
+
+      const propCleaningFee = (source.properties as any)?.cleaning_fee
+        ? Number((source.properties as any).cleaning_fee)
+        : 0
 
       // Fetch monthly rates for this property
       const { data: monthlyRates } = await supabase
@@ -81,7 +85,7 @@ export async function GET(request: NextRequest) {
       }
 
       const icalText = await icalResponse.text()
-      const bookings = parseIcal(icalText, source.property_id, source.platform, getRateForDate)
+      const bookings = parseIcal(icalText, source.property_id, source.platform, getRateForDate, propCleaningFee)
 
       // Get existing bookings for deduplication
       const { data: existingBookings } = await supabase
@@ -152,7 +156,8 @@ function parseIcal(
   icalText: string,
   propertyId: string,
   platform: string,
-  getRateForDate: (d: string) => number
+  getRateForDate: (d: string) => number,
+  cleaningFee: number = 0
 ) {
   const bookings: any[] = []
   const events = icalText.split('BEGIN:VEVENT')
@@ -184,7 +189,7 @@ function parseIcal(
     ))
 
     const ratePerNight = getRateForDate(checkIn)
-    const estimatedTotal = parseFloat((nights * ratePerNight).toFixed(2))
+    const estimatedTotal = parseFloat(((nights * ratePerNight) + cleaningFee).toFixed(2))
 
     let cleanGuest = summary || null
     if (!cleanGuest || cleanGuest.toLowerCase().includes('reserved') || cleanGuest.toLowerCase().includes('not available')) {
@@ -202,6 +207,7 @@ function parseIcal(
       check_in: checkIn,
       check_out: checkOut,
       price_per_night: ratePerNight,
+      cleaning_fee: cleaningFee,
       total_price: estimatedTotal,
       source: 'ical',
     })

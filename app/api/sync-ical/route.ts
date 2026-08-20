@@ -12,13 +12,17 @@ export async function POST(request: NextRequest) {
     // Fetch iCal source
     const { data: source } = await supabase
       .from('ical_sources')
-      .select('*, properties!inner(user_id, name)')
+      .select('*, properties!inner(user_id, name, cleaning_fee)')
       .eq('id', sourceId)
       .single()
 
     if (!source || (source.properties as any).user_id !== user.id) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
+
+    const propCleaningFee = (source.properties as any)?.cleaning_fee
+      ? Number((source.properties as any).cleaning_fee)
+      : 0
 
     // Fetch monthly_rates for this property to use real prices
     const { data: monthlyRates } = await supabase
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     const icalText = await icalResponse.text()
-    const bookings = parseIcal(icalText, propertyId, source.platform, getRateForDate)
+    const bookings = parseIcal(icalText, propertyId, source.platform, getRateForDate, propCleaningFee)
 
     // Fetch existing bookings for this property to preserve custom manual prices
     const { data: existingBookings } = await supabase
@@ -125,7 +129,8 @@ function parseIcal(
   icalText: string,
   propertyId: string,
   platform: string,
-  getRateForDate: (d: string) => number
+  getRateForDate: (d: string) => number,
+  cleaningFee: number = 0
 ) {
   const bookings: any[] = []
   const events = icalText.split('BEGIN:VEVENT')
@@ -159,7 +164,7 @@ function parseIcal(
 
     // Use real monthly rate if available, otherwise seasonal estimate
     const ratePerNight = getRateForDate(checkIn)
-    const estimatedTotal = parseFloat((nights * ratePerNight).toFixed(2))
+    const estimatedTotal = parseFloat(((nights * ratePerNight) + cleaningFee).toFixed(2))
 
     let cleanGuest = summary || null
     if (!cleanGuest || cleanGuest.toLowerCase().includes('reserved') || cleanGuest.toLowerCase().includes('not available')) {
@@ -177,6 +182,7 @@ function parseIcal(
       check_in: checkIn,
       check_out: checkOut,
       price_per_night: ratePerNight,
+      cleaning_fee: cleaningFee,
       total_price: estimatedTotal,
       source: 'ical',
     })

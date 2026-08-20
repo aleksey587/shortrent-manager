@@ -32,6 +32,7 @@ interface Booking {
   check_out: string
   nights: number
   price_per_night: number | null
+  cleaning_fee: number | null
   total_price: number | null
   platform: string
   notes: string | null
@@ -43,6 +44,7 @@ interface Property {
   name: string
   color: string
   ama_number?: string | null
+  cleaning_fee?: number | null
 }
 
 const EMPTY_FORM = {
@@ -51,6 +53,7 @@ const EMPTY_FORM = {
   check_in: '',
   check_out: '',
   price_per_night: '',
+  cleaning_fee: '',
   total_price: '',
   platform: 'manual',
   notes: '',
@@ -77,7 +80,7 @@ export default function BookingsPage() {
   async function fetchData() {
     setLoading(true)
     const [{ data: props }, { data: books }, { data: { user } }] = await Promise.all([
-      supabase.from('properties').select('id, name, color, ama_number').order('created_at'),
+      supabase.from('properties').select('id, name, color, ama_number, cleaning_fee').order('created_at'),
       supabase.from('bookings').select('*').order('check_in', { ascending: false }),
       supabase.auth.getUser(),
     ])
@@ -85,7 +88,12 @@ export default function BookingsPage() {
     setBookings(books ?? [])
     if (user && isSuperAdmin(user.email)) setIsProUser(true)
     if (props && props.length > 0 && !form.property_id) {
-      setForm(f => ({ ...f, property_id: props[0].id }))
+      const firstProp = props[0]
+      setForm(f => ({
+        ...f,
+        property_id: firstProp.id,
+        cleaning_fee: firstProp.cleaning_fee ? String(firstProp.cleaning_fee) : '',
+      }))
     }
     setLoading(false)
   }
@@ -119,30 +127,36 @@ export default function BookingsPage() {
     return null
   }
 
-  // Auto-calculate total when price_per_night or dates change
+  // Auto-calculate total = nights × price_per_night + cleaning_fee
   useEffect(() => {
-    const activeForm = editingBooking ? {
-      check_in: editingBooking.check_in,
-      check_out: editingBooking.check_out,
-      price_per_night: editingBooking.price_per_night?.toString() ?? '',
-    } : form
-
-    if (activeForm.price_per_night && activeForm.check_in && activeForm.check_out) {
+    const pricePerNight = parseFloat(form.price_per_night) || 0
+    const cleaningFee = parseFloat(form.cleaning_fee) || 0
+    if (pricePerNight > 0 && form.check_in && form.check_out) {
       const nights = Math.ceil(
-        (new Date(activeForm.check_out).getTime() - new Date(activeForm.check_in).getTime()) / (1000 * 60 * 60 * 24)
+        (new Date(form.check_out).getTime() - new Date(form.check_in).getTime()) / (1000 * 60 * 60 * 24)
       )
       if (nights > 0) {
-        const total = (parseFloat(activeForm.price_per_night) * nights).toFixed(2)
-        if (editingBooking) {
-          setEditingBooking(b => b ? { ...b, total_price: parseFloat(total) } : b)
-        } else {
-          setForm(f => ({ ...f, total_price: total }))
-        }
+        setForm(f => ({ ...f, total_price: (pricePerNight * nights + cleaningFee).toFixed(2) }))
       }
     }
-  }, [form.price_per_night, form.check_in, form.check_out, editingBooking?.price_per_night, editingBooking?.check_in, editingBooking?.check_out])
+  }, [form.price_per_night, form.cleaning_fee, form.check_in, form.check_out])
 
-  // Auto-fill price when check_in or property changes (new form)
+  // Auto-calc total for editing booking
+  useEffect(() => {
+    if (!editingBooking) return
+    const pricePerNight = editingBooking.price_per_night ?? 0
+    const cleaningFee = editingBooking.cleaning_fee ?? 0
+    if (pricePerNight > 0 && editingBooking.check_in && editingBooking.check_out) {
+      const nights = Math.ceil(
+        (new Date(editingBooking.check_out).getTime() - new Date(editingBooking.check_in).getTime()) / (1000 * 60 * 60 * 24)
+      )
+      if (nights > 0) {
+        setEditingBooking(b => b ? { ...b, total_price: parseFloat((pricePerNight * nights + cleaningFee).toFixed(2)) } : b)
+      }
+    }
+  }, [editingBooking?.price_per_night, editingBooking?.cleaning_fee, editingBooking?.check_in, editingBooking?.check_out])
+
+  // Auto-fill price AND cleaning_fee when check_in or property changes
   useEffect(() => {
     if (form.check_in && form.property_id && !form.price_per_night) {
       loadRatesForProperty(form.property_id).then(rates => {
@@ -150,7 +164,21 @@ export default function BookingsPage() {
         if (rate) setForm(f => ({ ...f, price_per_night: rate.toString() }))
       })
     }
+    // Auto-fill cleaning fee from property default when property changes
+    const prop = properties.find(p => p.id === form.property_id)
+    if (prop?.cleaning_fee && !form.cleaning_fee) {
+      setForm(f => ({ ...f, cleaning_fee: String(prop.cleaning_fee) }))
+    }
   }, [form.check_in, form.property_id])
+
+  // When property selector changes, immediately update cleaning fee
+  useEffect(() => {
+    if (!form.property_id) return
+    const prop = properties.find(p => p.id === form.property_id)
+    if (prop?.cleaning_fee != null) {
+      setForm(f => ({ ...f, cleaning_fee: String(prop.cleaning_fee) }))
+    }
+  }, [form.property_id, properties])
 
   // Auto-fill price when editing and check_in changes
   useEffect(() => {
@@ -170,6 +198,7 @@ export default function BookingsPage() {
       check_in: form.check_in,
       check_out: form.check_out,
       price_per_night: form.price_per_night ? parseFloat(form.price_per_night) : null,
+      cleaning_fee: form.cleaning_fee ? parseFloat(form.cleaning_fee) : 0,
       total_price: form.total_price ? parseFloat(form.total_price) : null,
       platform: form.platform,
       notes: form.notes || null,
@@ -188,6 +217,7 @@ export default function BookingsPage() {
       check_in: editingBooking.check_in,
       check_out: editingBooking.check_out,
       price_per_night: editingBooking.price_per_night,
+      cleaning_fee: editingBooking.cleaning_fee ?? 0,
       total_price: editingBooking.total_price,
       platform: editingBooking.platform,
       notes: editingBooking.notes || null,
@@ -363,17 +393,54 @@ export default function BookingsPage() {
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1.5">Σύνολο (€)</label>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+            Καθαριότητα (€)
+          </label>
           <input
             type="number"
-            step="0.01"
+            step="1"
             min="0"
-            value={typeof data.total_price === 'number' ? data.total_price : (data.total_price ?? '')}
-            onChange={e => onChange('total_price', e.target.value)}
-            className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-            placeholder="Αυτόματος"
+            value={typeof data.cleaning_fee === 'number' ? data.cleaning_fee : (data.cleaning_fee ?? '')}
+            onChange={e => onChange('cleaning_fee', e.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-teal-50 border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            placeholder="0"
           />
         </div>
+      </div>
+
+      {/* Total breakdown */}
+      {nights > 0 && (parseFloat(String(data.price_per_night)) > 0 || parseFloat(String(data.cleaning_fee)) > 0) && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1.5 text-xs">
+          <div className="flex justify-between text-gray-500">
+            <span>{nights} νύχτες × €{parseFloat(String(data.price_per_night) || '0').toFixed(2)}</span>
+            <span>€{(nights * (parseFloat(String(data.price_per_night) || '0'))).toFixed(2)}</span>
+          </div>
+          {parseFloat(String(data.cleaning_fee) || '0') > 0 && (
+            <div className="flex justify-between text-teal-600">
+              <span>Τέλος καθαριότητας</span>
+              <span>€{parseFloat(String(data.cleaning_fee) || '0').toFixed(2)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5">
+            <span>Σύνολο</span>
+            <span className="text-emerald-700">
+              €{((nights * (parseFloat(String(data.price_per_night) || '0'))) + (parseFloat(String(data.cleaning_fee) || '0'))).toFixed(2)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-1.5">Σύνολο (€)</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={typeof data.total_price === 'number' ? data.total_price : (data.total_price ?? '')}
+          onChange={e => onChange('total_price', e.target.value)}
+          className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          placeholder="Αυτόματος"
+        />
       </div>
 
       <div>
