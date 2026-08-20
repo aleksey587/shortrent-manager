@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, RefreshCw, BookOpen, Search, Download } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, BookOpen, Search, Download, Edit2, X, Moon } from 'lucide-react'
 import { format } from 'date-fns'
 import { el } from 'date-fns/locale'
 import ShareBookingModal from '@/components/bookings/ShareBookingModal'
@@ -45,26 +45,32 @@ interface Property {
   ama_number?: string | null
 }
 
+const EMPTY_FORM = {
+  property_id: '',
+  guest_name: '',
+  check_in: '',
+  check_out: '',
+  price_per_night: '',
+  total_price: '',
+  platform: 'manual',
+  notes: '',
+}
+
 export default function BookingsPage() {
   const supabase = createClient()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
   const [search, setSearch] = useState('')
   const [filterProperty, setFilterProperty] = useState('all')
   const [isProUser, setIsProUser] = useState(false)
 
-  const [form, setForm] = useState({
-    property_id: '',
-    guest_name: '',
-    check_in: '',
-    check_out: '',
-    price_per_night: '',
-    total_price: '',
-    platform: 'manual',
-    notes: '',
-  })
+  // Monthly rates cache: property_id -> year -> month -> price
+  const [ratesCache, setRatesCache] = useState<Record<string, Record<number, Record<number, number>>>>({})
+
+  const [form, setForm] = useState(EMPTY_FORM)
 
   useEffect(() => { fetchData() }, [])
 
@@ -77,26 +83,84 @@ export default function BookingsPage() {
     ])
     setProperties(props ?? [])
     setBookings(books ?? [])
-    if (user && isSuperAdmin(user.email)) {
-      setIsProUser(true)
-    }
+    if (user && isSuperAdmin(user.email)) setIsProUser(true)
     if (props && props.length > 0 && !form.property_id) {
       setForm(f => ({ ...f, property_id: props[0].id }))
     }
     setLoading(false)
   }
 
+  // Load monthly rates for a property when needed
+  async function loadRatesForProperty(propertyId: string) {
+    if (ratesCache[propertyId]) return ratesCache[propertyId]
+    const { data } = await supabase
+      .from('monthly_rates')
+      .select('year, month, price_per_night')
+      .eq('property_id', propertyId)
+    const map: Record<number, Record<number, number>> = {}
+    for (const r of data ?? []) {
+      if (!map[r.year]) map[r.year] = {}
+      map[r.year][r.month] = r.price_per_night
+    }
+    setRatesCache(c => ({ ...c, [propertyId]: map }))
+    return map
+  }
+
+  function getSuggestedRate(rates: Record<number, Record<number, number>>, dateStr: string): number | null {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    const year = d.getFullYear()
+    const month = d.getMonth() + 1
+    if (rates[year]?.[month]) return rates[year][month]
+    const years = Object.keys(rates).map(Number).sort((a, b) => Math.abs(a - year) - Math.abs(b - year))
+    for (const y of years) {
+      if (rates[y]?.[month]) return rates[y][month]
+    }
+    return null
+  }
+
   // Auto-calculate total when price_per_night or dates change
   useEffect(() => {
-    if (form.price_per_night && form.check_in && form.check_out) {
+    const activeForm = editingBooking ? {
+      check_in: editingBooking.check_in,
+      check_out: editingBooking.check_out,
+      price_per_night: editingBooking.price_per_night?.toString() ?? '',
+    } : form
+
+    if (activeForm.price_per_night && activeForm.check_in && activeForm.check_out) {
       const nights = Math.ceil(
-        (new Date(form.check_out).getTime() - new Date(form.check_in).getTime()) / (1000 * 60 * 60 * 24)
+        (new Date(activeForm.check_out).getTime() - new Date(activeForm.check_in).getTime()) / (1000 * 60 * 60 * 24)
       )
       if (nights > 0) {
-        setForm(f => ({ ...f, total_price: (parseFloat(form.price_per_night) * nights).toFixed(2) }))
+        const total = (parseFloat(activeForm.price_per_night) * nights).toFixed(2)
+        if (editingBooking) {
+          setEditingBooking(b => b ? { ...b, total_price: parseFloat(total) } : b)
+        } else {
+          setForm(f => ({ ...f, total_price: total }))
+        }
       }
     }
-  }, [form.price_per_night, form.check_in, form.check_out])
+  }, [form.price_per_night, form.check_in, form.check_out, editingBooking?.price_per_night, editingBooking?.check_in, editingBooking?.check_out])
+
+  // Auto-fill price when check_in or property changes (new form)
+  useEffect(() => {
+    if (form.check_in && form.property_id && !form.price_per_night) {
+      loadRatesForProperty(form.property_id).then(rates => {
+        const rate = getSuggestedRate(rates, form.check_in)
+        if (rate) setForm(f => ({ ...f, price_per_night: rate.toString() }))
+      })
+    }
+  }, [form.check_in, form.property_id])
+
+  // Auto-fill price when editing and check_in changes
+  useEffect(() => {
+    if (editingBooking?.check_in && editingBooking?.property_id && !editingBooking?.price_per_night) {
+      loadRatesForProperty(editingBooking.property_id).then(rates => {
+        const rate = getSuggestedRate(rates, editingBooking.check_in)
+        if (rate) setEditingBooking(b => b ? { ...b, price_per_night: rate } : b)
+      })
+    }
+  }, [editingBooking?.check_in, editingBooking?.property_id])
 
   async function addBooking(e: React.FormEvent) {
     e.preventDefault()
@@ -112,7 +176,24 @@ export default function BookingsPage() {
       source: 'manual',
     })
     setShowAdd(false)
-    setForm(f => ({ ...f, guest_name: '', check_in: '', check_out: '', price_per_night: '', total_price: '', notes: '' }))
+    setForm(f => ({ ...EMPTY_FORM, property_id: f.property_id }))
+    fetchData()
+  }
+
+  async function updateBooking(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingBooking) return
+    await supabase.from('bookings').update({
+      guest_name: editingBooking.guest_name || null,
+      check_in: editingBooking.check_in,
+      check_out: editingBooking.check_out,
+      price_per_night: editingBooking.price_per_night,
+      total_price: editingBooking.total_price,
+      platform: editingBooking.platform,
+      notes: editingBooking.notes || null,
+      property_id: editingBooking.property_id,
+    }).eq('id', editingBooking.id)
+    setEditingBooking(null)
     fetchData()
   }
 
@@ -138,7 +219,7 @@ export default function BookingsPage() {
 
   const exportToCsv = () => {
     if (filtered.length === 0) return
-    const headers = ['Ακίνητο', 'Επισκέπτης', 'Check-in', 'Check-out', 'Νύχτες', 'Σύνολο (€)', 'Πλατφόρμα', 'Σημειώσεις']
+    const headers = ['Ακίνητο', 'Επισκέπτης', 'Check-in', 'Check-out', 'Νύχτες', 'Τιμή/Νύχτα (€)', 'Σύνολο (€)', 'Πλατφόρμα', 'Σημειώσεις']
     const rows = filtered.map(b => {
       const prop = properties.find(p => p.id === b.property_id)
       return [
@@ -147,12 +228,12 @@ export default function BookingsPage() {
         `"${b.check_in}"`,
         `"${b.check_out}"`,
         `"${b.nights}"`,
+        `"${b.price_per_night ? b.price_per_night.toFixed(2) : '0.00'}"`,
         `"${b.total_price ? b.total_price.toFixed(2) : '0.00'}"`,
         `"${b.platform}"`,
         `"${b.notes || ''}"`,
       ]
     })
-
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -164,14 +245,153 @@ export default function BookingsPage() {
     document.body.removeChild(link)
   }
 
+  // Compute nights for form display
+  const formNights = form.check_in && form.check_out
+    ? Math.max(0, Math.ceil((new Date(form.check_out).getTime() - new Date(form.check_in).getTime()) / 86400000))
+    : 0
+  const editNights = editingBooking?.check_in && editingBooking?.check_out
+    ? Math.max(0, Math.ceil((new Date(editingBooking.check_out).getTime() - new Date(editingBooking.check_in).getTime()) / 86400000))
+    : 0
+
   if (loading) return (
     <div className="flex items-center justify-center h-64 text-gray-400">
       <RefreshCw className="animate-spin mr-2" size={20} /> Φόρτωση...
     </div>
   )
 
+  const BookingFormFields = ({
+    data,
+    onChange,
+    nights,
+    isEdit = false,
+  }: {
+    data: any
+    onChange: (key: string, value: string | number) => void
+    nights: number
+    isEdit?: boolean
+  }) => (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-1.5">Ακίνητο *</label>
+        <select
+          required
+          value={data.property_id}
+          onChange={e => onChange('property_id', e.target.value)}
+          className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-1.5">Πλατφόρμα</label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {[
+            { k: 'airbnb', l: 'Airbnb', c: 'bg-red-50 border-red-300 text-red-700' },
+            { k: 'booking', l: 'Booking', c: 'bg-blue-50 border-blue-300 text-blue-700' },
+            { k: 'vrbo', l: 'VRBO', c: 'bg-teal-50 border-teal-300 text-teal-700' },
+            { k: 'manual', l: 'Χειροκίνητη', c: 'bg-gray-100 border-gray-300 text-gray-700' },
+            { k: 'other', l: 'Άλλη', c: 'bg-gray-100 border-gray-300 text-gray-700' },
+          ].map(pl => (
+            <button
+              key={pl.k}
+              type="button"
+              onClick={() => onChange('platform', pl.k)}
+              className={`py-1.5 px-2 rounded-xl border text-[11px] font-bold transition-all ${
+                data.platform === pl.k ? pl.c + ' ring-2 ring-offset-1 ring-blue-400' : 'bg-white border-gray-200 text-gray-500'
+              }`}
+            >
+              {pl.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-1.5">Όνομα Επισκέπτη</label>
+        <input
+          value={data.guest_name ?? ''}
+          onChange={e => onChange('guest_name', e.target.value)}
+          className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Προαιρετικό"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Check-in *</label>
+          <input
+            required
+            type="date"
+            value={data.check_in}
+            onChange={e => onChange('check_in', e.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Check-out *</label>
+          <input
+            required
+            type="date"
+            value={data.check_out}
+            min={data.check_in || undefined}
+            onChange={e => onChange('check_out', e.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* Nights indicator */}
+      {nights > 0 && (
+        <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+          <Moon size={13} />
+          <span className="font-semibold">{nights} {nights === 1 ? 'νύχτα' : 'νύχτες'}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Τιμή / Νύχτα (€)</label>
+          <input
+            type="number"
+            step="0.5"
+            min="0"
+            value={typeof data.price_per_night === 'number' ? data.price_per_night : (data.price_per_night ?? '')}
+            onChange={e => onChange('price_per_night', e.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Αυτόματα"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Σύνολο (€)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={typeof data.total_price === 'number' ? data.total_price : (data.total_price ?? '')}
+            onChange={e => onChange('total_price', e.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            placeholder="Αυτόματος"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-1.5">Σημειώσεις</label>
+        <textarea
+          value={data.notes ?? ''}
+          rows={2}
+          onChange={e => onChange('notes', e.target.value)}
+          className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          placeholder="Προαιρετικές σημειώσεις..."
+        />
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Κρατήσεις</h1>
@@ -180,26 +400,21 @@ export default function BookingsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Import CSV Modal */}
           {properties.length > 0 && (
             <ImportCsvModal properties={properties} onSuccess={fetchData} />
           )}
-
-          {/* Export CSV Button */}
           <button
             onClick={exportToCsv}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-all shadow-2xs disabled:opacity-50"
-            title="Εξαγωγή σε Excel / CSV"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-all disabled:opacity-40"
+            title="Εξαγωγή σε Excel"
           >
             <Download size={14} />
-            <span>Εξαγωγή CSV (Excel)</span>
+            <span className="hidden sm:inline">Εξαγωγή CSV</span>
           </button>
-
-          {/* Add Booking */}
           <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm"
+            onClick={() => { setForm(f => ({ ...EMPTY_FORM, property_id: f.property_id || properties[0]?.id || '' })); setShowAdd(true) }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm"
           >
             <Plus size={16} />
             <span>Νέα Κράτηση</span>
@@ -215,13 +430,13 @@ export default function BookingsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Αναζήτηση επισκέπτη..."
-            className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <select
           value={filterProperty}
           onChange={e => setFilterProperty(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">Όλα τα ακίνητα</option>
           {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -230,82 +445,66 @@ export default function BookingsPage() {
 
       {/* Add Booking Modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">Νέα Κράτηση</h2>
-            <form onSubmit={addBooking} className="space-y-3">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto space-y-5">
+            <div className="flex items-center justify-between">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ακίνητο *</label>
-                <select required value={form.property_id}
-                  onChange={e => setForm(f => ({ ...f, property_id: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <h2 className="text-lg font-extrabold text-gray-900">Νέα Κράτηση</h2>
+                <p className="text-xs text-gray-400">Συμπληρώστε τα στοιχεία της κράτησης</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Πλατφόρμα</label>
-                <select value={form.platform}
-                  onChange={e => setForm(f => ({ ...f, platform: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="manual">Χειροκίνητη</option>
-                  <option value="airbnb">Airbnb</option>
-                  <option value="booking">Booking.com</option>
-                  <option value="vrbo">VRBO</option>
-                  <option value="other">Άλλη</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Όνομα Επισκέπτη</label>
-                <input value={form.guest_name}
-                  onChange={e => setForm(f => ({ ...f, guest_name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Προαιρετικό" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Check-in *</label>
-                  <input required type="date" value={form.check_in}
-                    onChange={e => setForm(f => ({ ...f, check_in: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Check-out *</label>
-                  <input required type="date" value={form.check_out}
-                    onChange={e => setForm(f => ({ ...f, check_out: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Τιμή/νύχτα (€)</label>
-                  <input type="number" step="0.01" min="0" value={form.price_per_night}
-                    onChange={e => setForm(f => ({ ...f, price_per_night: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Σύνολο (€)</label>
-                  <input type="number" step="0.01" min="0" value={form.total_price}
-                    onChange={e => setForm(f => ({ ...f, total_price: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Αυτόματος υπολογισμός" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Σημειώσεις</label>
-                <textarea value={form.notes} rows={2}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="Προαιρετικές σημειώσεις..." />
-              </div>
+              <button onClick={() => setShowAdd(false)} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={addBooking} className="space-y-4">
+              <BookingFormFields
+                data={form}
+                onChange={(k, v) => setForm(f => ({ ...f, [k]: v }))}
+                nights={formNights}
+              />
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setShowAdd(false)}
-                  className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-xl text-sm hover:bg-gray-50">
+                  className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50">
                   Ακύρωση
                 </button>
                 <button type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-xl text-sm hover:bg-blue-700">
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-sm">
                   Αποθήκευση
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Booking Modal */}
+      {editingBooking && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-extrabold text-gray-900">Επεξεργασία Κράτησης</h2>
+                <p className="text-xs text-gray-400">Ενημερώστε τα στοιχεία</p>
+              </div>
+              <button onClick={() => setEditingBooking(null)} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={updateBooking} className="space-y-4">
+              <BookingFormFields
+                data={editingBooking}
+                onChange={(k, v) => setEditingBooking(b => b ? { ...b, [k]: v } : b)}
+                nights={editNights}
+                isEdit
+              />
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setEditingBooking(null)}
+                  className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50">
+                  Ακύρωση
+                </button>
+                <button type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-sm">
+                  Ενημέρωση
                 </button>
               </div>
             </form>
@@ -322,21 +521,15 @@ export default function BookingsPage() {
         </div>
       ) : (
         <>
-          {/* Mobile Card List (md:hidden) */}
+          {/* Mobile Card List */}
           <div className="md:hidden space-y-3">
             {filtered.map(booking => {
               const prop = properties.find(p => p.id === booking.property_id)
               return (
-                <div
-                  key={booking.id}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3"
-                >
+                <div key={booking.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: prop?.color ?? '#3b82f6' }}
-                      />
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: prop?.color ?? '#3b82f6' }} />
                       <span className="font-bold text-gray-900 text-sm">{prop?.name ?? '—'}</span>
                     </div>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLATFORM_COLORS[booking.platform] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -353,7 +546,7 @@ export default function BookingsPage() {
                       <span className="text-gray-400 block text-[10px] uppercase font-bold">Σύνολο / Νύχτες</span>
                       <span className="font-bold text-emerald-700">
                         {booking.total_price ? `€${booking.total_price.toLocaleString('el-GR', { minimumFractionDigits: 2 })}` : '—'}
-                        <span className="text-gray-500 font-normal text-[11px]"> ({booking.nights} ν.)</span>
+                        <span className="text-gray-500 font-normal text-[11px]"> ({booking.nights}ν · {booking.price_per_night ? `€${booking.price_per_night}/ν` : '—'})</span>
                       </span>
                     </div>
                     <div className="col-span-2 pt-1 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-600">
@@ -364,20 +557,25 @@ export default function BookingsPage() {
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
-                    <button
-                      onClick={() => deleteBooking(booking.id)}
-                      className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                      title="Διαγραφή"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setEditingBooking(booking)}
+                        className="text-gray-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                        title="Επεξεργασία"
+                      >
+                        <Edit2 size={15} />
+                      </button>
+                      <button
+                        onClick={() => deleteBooking(booking.id)}
+                        className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Διαγραφή"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                     <ShareBookingModal
                       isPro={isProUser}
-                      booking={{
-                        ...booking,
-                        propertyName: prop?.name,
-                        amaNumber: prop?.ama_number,
-                      }}
+                      booking={{ ...booking, propertyName: prop?.name, amaNumber: prop?.ama_number }}
                     />
                   </div>
                 </div>
@@ -385,7 +583,7 @@ export default function BookingsPage() {
             })}
           </div>
 
-          {/* Desktop Table (hidden md:block) */}
+          {/* Desktop Table */}
           <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -396,6 +594,7 @@ export default function BookingsPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-in</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-out</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Νύχτες</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">€/Νύχτα</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Σύνολο</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Πλατφόρμα</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ενέργειες</th>
@@ -405,25 +604,21 @@ export default function BookingsPage() {
                   {filtered.map(booking => {
                     const prop = properties.find(p => p.id === booking.property_id)
                     return (
-                      <tr key={booking.id} className="hover:bg-gray-50">
+                      <tr key={booking.id} className="hover:bg-gray-50/70 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: prop?.color ?? '#3b82f6' }} />
-                            <span className="font-medium text-gray-900 truncate max-w-32">
-                              {prop?.name ?? '—'}
-                            </span>
+                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: prop?.color ?? '#3b82f6' }} />
+                            <span className="font-medium text-gray-900 truncate max-w-32">{prop?.name ?? '—'}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-gray-600">{booking.guest_name || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {format(new Date(booking.check_in), 'd MMM yyyy', { locale: el })}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {format(new Date(booking.check_out), 'd MMM yyyy', { locale: el })}
-                        </td>
+                        <td className="px-4 py-3 text-gray-600">{format(new Date(booking.check_in), 'd MMM yyyy', { locale: el })}</td>
+                        <td className="px-4 py-3 text-gray-600">{format(new Date(booking.check_out), 'd MMM yyyy', { locale: el })}</td>
                         <td className="px-4 py-3 text-gray-600">{booking.nights}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">
+                        <td className="px-4 py-3 text-gray-600">
+                          {booking.price_per_night ? `€${booking.price_per_night.toLocaleString('el-GR', { minimumFractionDigits: 2 })}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-gray-900">
                           {booking.total_price ? `€${booking.total_price.toLocaleString('el-GR', { minimumFractionDigits: 2 })}` : '—'}
                         </td>
                         <td className="px-4 py-3">
@@ -432,18 +627,21 @@ export default function BookingsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             <ShareBookingModal
                               isPro={isProUser}
-                              booking={{
-                                ...booking,
-                                propertyName: prop?.name,
-                                amaNumber: prop?.ama_number,
-                              }}
+                              booking={{ ...booking, propertyName: prop?.name, amaNumber: prop?.ama_number }}
                             />
                             <button
+                              onClick={() => setEditingBooking(booking)}
+                              className="text-gray-300 hover:text-blue-600 p-1 rounded-lg hover:bg-blue-50 transition-colors"
+                              title="Επεξεργασία"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            <button
                               onClick={() => deleteBooking(booking.id)}
-                              className="text-gray-300 hover:text-red-500 p-1 rounded transition-colors"
+                              className="text-gray-300 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors"
                               title="Διαγραφή"
                             >
                               <Trash2 size={15} />

@@ -67,6 +67,74 @@ export default async function AadePage() {
         </div>
       ))}
 
+      {/* Quarterly Income Auto-Summary */}
+      {(() => {
+        const quarters = [
+          { q: 1, label: 'Α΄ Τρίμηνο', months: [1, 2, 3] },
+          { q: 2, label: 'Β΄ Τρίμηνο', months: [4, 5, 6] },
+          { q: 3, label: 'Γ΄ Τρίμηνο', months: [7, 8, 9] },
+          { q: 4, label: 'Δ΄ Τρίμηνο', months: [10, 11, 12] },
+        ]
+        const quarterIncome = quarters.map(({ q, label, months }) => {
+          const income = (bookings ?? [])
+            .filter(b => {
+              const year = parseInt(b.check_in.slice(0, 4))
+              const month = parseInt(b.check_in.slice(5, 7))
+              return year === currentYear && months.includes(month)
+            })
+            .reduce((sum, b) => sum + (b.total_price ?? 0), 0)
+          const count = (bookings ?? []).filter(b => {
+            const year = parseInt(b.check_in.slice(0, 4))
+            const month = parseInt(b.check_in.slice(5, 7))
+            return year === currentYear && months.includes(month)
+          }).length
+          return { q, label, income, count }
+        })
+        const yearTotal = quarterIncome.reduce((s, r) => s + r.income, 0)
+
+        return (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                <TrendingUp size={17} className="text-purple-500" />
+                Έσοδα ανά Τρίμηνο — {currentYear}
+              </h2>
+              <span className="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                Σύνολο: €{yearTotal.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {quarterIncome.map(({ q, label, income, count }) => {
+                const isCurrent = q === currentQ && currentYear === new Date().getFullYear()
+                return (
+                  <div
+                    key={q}
+                    className={`rounded-2xl p-4 border ${
+                      isCurrent
+                        ? 'border-blue-300 bg-blue-50'
+                        : 'border-gray-100 bg-gray-50'
+                    }`}
+                  >
+                    <p className={`text-xs font-bold mb-1 ${isCurrent ? 'text-blue-700' : 'text-gray-500'}`}>
+                      {label} {isCurrent && '(τρέχον)'}
+                    </p>
+                    <p className={`text-lg font-extrabold ${income > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                      €{income.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{count} κρατήσεις</p>
+                    {income > 0 && (
+                      <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                        Φόρος ~€{(income * 0.15).toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Complete Tax Calculator & Breakdown Hub */}
       <TaxCalculatorHub
         bookings={bookings ?? []}

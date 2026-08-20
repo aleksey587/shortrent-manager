@@ -20,16 +20,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
+    // Fetch monthly_rates for this property to use real prices
+    const { data: monthlyRates } = await supabase
+      .from('monthly_rates')
+      .select('year, month, price_per_night')
+      .eq('property_id', propertyId)
+      .eq('user_id', user.id)
+
+    // Build rates lookup: year -> month -> price
+    const ratesMap: Record<number, Record<number, number>> = {}
+    for (const r of monthlyRates ?? []) {
+      if (!ratesMap[r.year]) ratesMap[r.year] = {}
+      ratesMap[r.year][r.month] = r.price_per_night
+    }
+
+    // Helper to find rate from monthly_rates or fallback to seasonal
+    const getRateForDate = (dateStr: string): number => {
+      const d = new Date(dateStr)
+      const year = d.getFullYear()
+      const month = d.getMonth() + 1
+
+      // Try exact year/month
+      if (ratesMap[year]?.[month]) return ratesMap[year][month]
+
+      // Try any other year with same month (closest year first)
+      const years = Object.keys(ratesMap).map(Number).sort((a, b) => Math.abs(a - year) - Math.abs(b - year))
+      for (const y of years) {
+        if (ratesMap[y]?.[month]) return ratesMap[y][month]
+      }
+
+      // Fallback to seasonal estimate only if no rates configured
+      return getSeasonalRate(dateStr)
+    }
+
     // Fetch iCal data
     const icalResponse = await fetch(source.url, {
-      headers: { 'User-Agent': 'ShortRentManager/1.0' },
+      headers: { 'User-Agent': 'GreekHost/1.0' },
     })
     if (!icalResponse.ok) {
       return NextResponse.json({ error: 'Failed to fetch iCal URL' }, { status: 400 })
     }
 
     const icalText = await icalResponse.text()
-    const bookings = parseIcal(icalText, propertyId, source.platform)
+    const bookings = parseIcal(icalText, propertyId, source.platform, getRateForDate)
 
     // Fetch existing bookings for this property to preserve custom manual prices
     const { data: existingBookings } = await supabase
@@ -47,8 +80,8 @@ export async function POST(request: NextRequest) {
 
     for (const booking of bookings) {
       const existing = existingMap.get(booking.ical_uid)
-      
-      // If booking exists and already has a custom price/name, keep it
+
+      // If booking exists and already has a manually-set price, keep it
       if (existing) {
         if (existing.total_price && !booking.total_price) {
           booking.total_price = existing.total_price
@@ -81,18 +114,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Calculate seasonal rate for Athens / short term rental
 function getSeasonalRate(dateStr: string): number {
-  const month = parseInt(dateStr.slice(5, 7), 10) // 1 - 12
-  // High season: June, July, August, September
+  const month = parseInt(dateStr.slice(5, 7), 10)
   if (month >= 6 && month <= 9) return 125.0
-  // Mid season: April, May, October
   if (month === 4 || month === 5 || month === 10) return 85.0
-  // Low season: November, December, January, February, March
   return 70.0
 }
 
-function parseIcal(icalText: string, propertyId: string, platform: string) {
+function parseIcal(
+  icalText: string,
+  propertyId: string,
+  platform: string,
+  getRateForDate: (d: string) => number
+) {
   const bookings: any[] = []
   const events = icalText.split('BEGIN:VEVENT')
 
@@ -111,7 +145,6 @@ function parseIcal(icalText: string, propertyId: string, platform: string) {
 
     if (!uid || !dtstart || !dtend) continue
 
-    // Parse YYYYMMDD or YYYYMMDDTHHMMSSZ
     const parseDate = (d: string): string => {
       const clean = d.replace(/[TZ]/g, '').replace(/[^0-9]/g, '')
       return `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`
@@ -120,22 +153,19 @@ function parseIcal(icalText: string, propertyId: string, platform: string) {
     const checkIn = parseDate(dtstart)
     const checkOut = parseDate(dtend)
 
-    // Calculate nights
     const startMs = new Date(checkIn).getTime()
     const endMs = new Date(checkOut).getTime()
     const nights = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)))
 
-    // Calculate seasonal estimated price
-    const ratePerNight = getSeasonalRate(checkIn)
+    // Use real monthly rate if available, otherwise seasonal estimate
+    const ratePerNight = getRateForDate(checkIn)
     const estimatedTotal = parseFloat((nights * ratePerNight).toFixed(2))
 
-    // Format guest name
     let cleanGuest = summary || null
     if (!cleanGuest || cleanGuest.toLowerCase().includes('reserved') || cleanGuest.toLowerCase().includes('not available')) {
       const platformName = platform === 'booking' ? 'Booking.com' : platform === 'vrbo' ? 'VRBO' : 'Airbnb'
       cleanGuest = `Επισκέπτης ${platformName}`
     } else {
-      // Remove any unwanted prefixes like "Airbnb - "
       cleanGuest = cleanGuest.replace(/^Airbnb\s*[-–:]\s*/i, '').trim()
     }
 
