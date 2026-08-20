@@ -642,7 +642,12 @@ export default function BookingsPage() {
                     </div>
                     <ShareBookingModal
                       isPro={isProUser}
-                      booking={{ ...booking, propertyName: prop?.name, amaNumber: prop?.ama_number }}
+                      booking={{
+                        ...booking,
+                        propertyName: prop?.name,
+                        amaNumber: prop?.ama_number,
+                        cleaning_fee: (booking.cleaning_fee && booking.cleaning_fee > 0) ? booking.cleaning_fee : (prop?.cleaning_fee ?? 0)
+                      }}
                     />
                   </div>
                 </div>
@@ -697,7 +702,12 @@ export default function BookingsPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <ShareBookingModal
                               isPro={isProUser}
-                              booking={{ ...booking, propertyName: prop?.name, amaNumber: prop?.ama_number }}
+                              booking={{
+                                ...booking,
+                                propertyName: prop?.name,
+                                amaNumber: prop?.ama_number,
+                                cleaning_fee: (booking.cleaning_fee && booking.cleaning_fee > 0) ? booking.cleaning_fee : (prop?.cleaning_fee ?? 0)
+                              }}
                             />
                             <button
                               onClick={() => setEditingBooking(booking)}
