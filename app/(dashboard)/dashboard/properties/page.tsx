@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Plus, Trash2, RefreshCw, Home, ChevronDown, ChevronUp,
-  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock
+  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock, Sparkles, Wand2
 } from 'lucide-react'
 import MonthlyPricingPanel from '@/components/properties/MonthlyPricingPanel'
 
@@ -19,6 +19,21 @@ const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
 const PROPERTY_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
   '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+]
+
+const MONTHS = [
+  { key: 1, label: 'Ιανουάριος' },
+  { key: 2, label: 'Φεβρουάριος' },
+  { key: 3, label: 'Μάρτιος' },
+  { key: 4, label: 'Απρίλιος' },
+  { key: 5, label: 'Μάιος' },
+  { key: 6, label: 'Ιούνιος' },
+  { key: 7, label: 'Ιούλιος' },
+  { key: 8, label: 'Αύγουστος' },
+  { key: 9, label: 'Σεπτέμβριος' },
+  { key: 10, label: 'Οκτώβριος' },
+  { key: 11, label: 'Νοέμβριος' },
+  { key: 12, label: 'Δεκέμβριος' },
 ]
 
 interface Property {
@@ -54,6 +69,12 @@ export default function PropertiesPage() {
   const [syncing, setSyncing] = useState<string | null>(null)
   const [expandedIcal, setExpandedIcal] = useState<string | null>(null)
 
+  // Modal tab state: 1 = Basic Info, 2 = Pricing & Cleaning
+  const [modalTab, setModalTab] = useState<1 | 2>(1)
+  const [modalYear, setModalYear] = useState<number>(new Date().getFullYear())
+  const [modalRates, setModalRates] = useState<Record<number, string>>({})
+  const [modalRatesLoading, setModalRatesLoading] = useState(false)
+
   // Form state
   const [newProp, setNewProp] = useState(EMPTY_PROP)
   const [newIcal, setNewIcal] = useState({ platform: 'airbnb', url: '' })
@@ -71,20 +92,73 @@ export default function PropertiesPage() {
     setLoading(false)
   }
 
+  // Load rates when opening edit modal
+  async function openEditModal(prop: Property) {
+    setEditingProp(prop)
+    setModalTab(1)
+    setModalRatesLoading(true)
+    const { data } = await supabase
+      .from('monthly_rates')
+      .select('*')
+      .eq('property_id', prop.id)
+      .eq('year', modalYear)
+
+    const map: Record<number, string> = {}
+    for (const r of data ?? []) {
+      map[r.month] = String(r.price_per_night)
+    }
+    setModalRates(map)
+    setModalRatesLoading(false)
+  }
+
+  function openAddModal() {
+    setNewProp(EMPTY_PROP)
+    setModalRates({})
+    setModalTab(1)
+    setShowAddProperty(true)
+  }
+
   async function addProperty(e: React.FormEvent) {
     e.preventDefault()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('properties').insert({
+
+    const cleanNum = newProp.cleaning_fee ? parseFloat(String(newProp.cleaning_fee)) : 0
+
+    const { data: createdProp, error } = await supabase.from('properties').insert({
       user_id: user.id,
       name: newProp.name,
       address: newProp.address || null,
       ama_number: newProp.ama_number || null,
       color: newProp.color,
       description: newProp.description || null,
-      cleaning_fee: newProp.cleaning_fee ? parseFloat(String(newProp.cleaning_fee)) : 0,
-    })
+      cleaning_fee: isNaN(cleanNum) ? 0 : cleanNum,
+    }).select().single()
+
+    if (error) {
+      alert('Σφάλμα δημιουργίας: ' + error.message)
+      return
+    }
+
+    // Save any entered monthly rates
+    if (createdProp && Object.keys(modalRates).length > 0) {
+      for (const [mStr, priceStr] of Object.entries(modalRates)) {
+        const month = Number(mStr)
+        const price = parseFloat(priceStr)
+        if (!priceStr || isNaN(price) || price <= 0) continue
+
+        await supabase.from('monthly_rates').upsert({
+          property_id: createdProp.id,
+          user_id: user.id,
+          year: modalYear,
+          month,
+          price_per_night: price,
+        }, { onConflict: 'property_id,year,month' })
+      }
+    }
+
     setNewProp(EMPTY_PROP)
+    setModalRates({})
     setShowAddProperty(false)
     fetchData()
   }
@@ -92,14 +166,38 @@ export default function PropertiesPage() {
   async function updateProperty(e: React.FormEvent) {
     e.preventDefault()
     if (!editingProp) return
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const cleanNum = editingProp.cleaning_fee != null ? parseFloat(String(editingProp.cleaning_fee)) : 0
+
     await supabase.from('properties').update({
       name: editingProp.name,
       address: editingProp.address || null,
       ama_number: editingProp.ama_number || null,
       color: editingProp.color,
       description: editingProp.description || null,
-      cleaning_fee: editingProp.cleaning_fee ?? 0,
+      cleaning_fee: isNaN(cleanNum) ? 0 : cleanNum,
     }).eq('id', editingProp.id)
+
+    // Save updated monthly rates
+    if (Object.keys(modalRates).length > 0) {
+      for (const [mStr, priceStr] of Object.entries(modalRates)) {
+        const month = Number(mStr)
+        const price = parseFloat(priceStr)
+        if (!priceStr || isNaN(price) || price <= 0) continue
+
+        await supabase.from('monthly_rates').upsert({
+          property_id: editingProp.id,
+          user_id: user.id,
+          year: modalYear,
+          month,
+          price_per_night: price,
+        }, { onConflict: 'property_id,year,month' })
+      }
+    }
+
     setEditingProp(null)
     fetchData()
   }
@@ -177,7 +275,7 @@ export default function PropertiesPage() {
             <span>💎 Πλάνο Starter (1/1 δωρεάν)</span>
           </Link>
           <button
-            onClick={() => { setNewProp(EMPTY_PROP); setShowAddProperty(true) }}
+            onClick={openAddModal}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"
           >
             <Plus size={16} /> Νέο Ακίνητο
@@ -185,10 +283,10 @@ export default function PropertiesPage() {
         </div>
       </div>
 
-      {/* Add / Edit Property Modal */}
+      {/* Add / Edit Property Modal with 2 TABS / PAGES */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 space-y-5 overflow-y-auto max-h-[90vh]">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-6 space-y-5 overflow-y-auto max-h-[92vh]">
             {/* Modal header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -197,9 +295,9 @@ export default function PropertiesPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-extrabold text-gray-900">
-                    {editingProp ? 'Επεξεργασία Ακινήτου' : 'Νέο Ακίνητο'}
+                    {editingProp ? `Επεξεργασία: ${editingProp.name}` : 'Νέο Ακίνητο'}
                   </h2>
-                  <p className="text-xs text-gray-400">Συμπληρώστε τα στοιχεία του ακινήτου σας</p>
+                  <p className="text-xs text-gray-400">Στοιχεία ακινήτου, τιμολόγηση και καθαριότητα</p>
                 </div>
               </div>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100">
@@ -207,123 +305,231 @@ export default function PropertiesPage() {
               </button>
             </div>
 
+            {/* TAB SELECTOR (2 Pages) */}
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setModalTab(1)}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  modalTab === 1
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Home size={14} />
+                <span>1. Βασικά Στοιχεία</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab(2)}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  modalTab === 2
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Euro size={14} className="text-amber-500" />
+                <span>2. Τιμές & Καθαριότητα</span>
+              </button>
+            </div>
+
             <form onSubmit={editingProp ? updateProperty : addProperty} className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
-                  <Home size={13} className="text-blue-500" />
-                  Όνομα Ακινήτου *
-                </label>
-                <input
-                  required
-                  value={propModalData.name}
-                  onChange={e => setPropModalData((p: any) => ({ ...p, name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="π.χ. Διαμέρισμα Αθήνα, Studio Κέρκυρα"
-                />
-              </div>
-
-              {/* Address */}
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
-                  <MapPin size={13} className="text-emerald-500" />
-                  Διεύθυνση
-                </label>
-                <input
-                  value={propModalData.address ?? ''}
-                  onChange={e => setPropModalData((p: any) => ({ ...p, address: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="π.χ. Ερμού 10, Αθήνα 10563"
-                />
-              </div>
-
-              {/* AMA */}
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
-                  <Hash size={13} className="text-purple-500" />
-                  ΑΜΑ (Αριθμός Μητρώου Ακινήτου)
-                </label>
-                <input
-                  value={propModalData.ama_number ?? ''}
-                  onChange={e => setPropModalData((p: any) => ({ ...p, ama_number: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Αριθμός από myProperty (ΑΑΔΕ)"
-                />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Βρείτε τον ΑΜΑ στο <a href="https://www1.aade.gr/saadeweb/web/guest/myProperty" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">myProperty (ΑΑΔΕ)</a>
-                </p>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
-                  📝 Σημειώσεις / Περιγραφή
-                </label>
-                <textarea
-                  value={propModalData.description ?? ''}
-                  onChange={e => setPropModalData((p: any) => ({ ...p, description: e.target.value }))}
-                  rows={2}
-                  className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder="π.χ. 2ος όροφος, 2 υπνοδωμάτια, κωδικός κλειδοθήκης #4829"
-                />
-              </div>
-
-              {/* Cleaning fee */}
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
-                  <Euro size={13} className="text-teal-500" />
-                  Τέλος Καθαριότητας (€)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">€</span>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={propModalData.cleaning_fee ?? ''}
-                    onChange={e => setPropModalData((p: any) => ({ ...p, cleaning_fee: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-xl pl-8 pr-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    placeholder="π.χ. 50"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
-                  💡 Προστίθεται αυτόματα σε κάθε κράτηση. <strong>Δεν φορολογείται</strong> — εμφανίζεται ξεχωριστά στο ΑΑΔΕ.
-                </p>
-              </div>
-
-              {/* Color picker */}
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-2">
-                  <Palette size={13} className="text-pink-500" />
-                  Χρώμα στο Ημερολόγιο
-                </label>
-                <div className="flex gap-2.5 flex-wrap">
-                  {PROPERTY_COLORS.map(c => (
-                    <button
-                      key={c} type="button"
-                      onClick={() => setPropModalData((p: any) => ({ ...p, color: c }))}
-                      className={`w-8 h-8 rounded-full transition-all ${propModalData.color === c ? 'ring-3 ring-offset-2 ring-gray-500 scale-110' : 'hover:scale-105'}`}
-                      style={{ backgroundColor: c }}
+              {/* --- PAGE 1: BASIC INFO --- */}
+              {modalTab === 1 && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Name */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                      <Home size={13} className="text-blue-500" />
+                      Όνομα Ακινήτου *
+                    </label>
+                    <input
+                      required
+                      value={propModalData.name}
+                      onChange={e => setPropModalData((p: any) => ({ ...p, name: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="π.χ. Callisto, Διαμέρισμα Αθήνα"
                     />
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Actions */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-                >
-                  Ακύρωση
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                  {editingProp ? 'Ενημέρωση' : 'Δημιουργία Ακινήτου'}
-                </button>
+                  {/* Address */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                      <MapPin size={13} className="text-emerald-500" />
+                      Διεύθυνση
+                    </label>
+                    <input
+                      value={propModalData.address ?? ''}
+                      onChange={e => setPropModalData((p: any) => ({ ...p, address: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="π.χ. Παρασίου 28-30, Άγιος Δημήτριος"
+                    />
+                  </div>
+
+                  {/* AMA */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                      <Hash size={13} className="text-purple-500" />
+                      ΑΜΑ (Αριθμός Μητρώου Ακινήτου)
+                    </label>
+                    <input
+                      value={propModalData.ama_number ?? ''}
+                      onChange={e => setPropModalData((p: any) => ({ ...p, ama_number: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Αριθμός από myProperty (ΑΑΔΕ)"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Βρείτε τον ΑΜΑ στο <a href="https://www1.aade.gr/saadeweb/web/guest/myProperty" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">myProperty (ΑΑΔΕ)</a>
+                    </p>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1.5">
+                      📝 Σημειώσεις / Περιγραφή
+                    </label>
+                    <textarea
+                      value={propModalData.description ?? ''}
+                      onChange={e => setPropModalData((p: any) => ({ ...p, description: e.target.value }))}
+                      rows={2}
+                      className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      placeholder="π.χ. 2ος όροφος, 2 υπνοδωμάτια, κωδικός κλειδοθήκης #4829"
+                    />
+                  </div>
+
+                  {/* Color picker */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-2">
+                      <Palette size={13} className="text-pink-500" />
+                      Χρώμα στο Ημερολόγιο
+                    </label>
+                    <div className="flex gap-2.5 flex-wrap">
+                      {PROPERTY_COLORS.map(c => (
+                        <button
+                          key={c} type="button"
+                          onClick={() => setPropModalData((p: any) => ({ ...p, color: c }))}
+                          className={`w-8 h-8 rounded-full transition-all ${propModalData.color === c ? 'ring-3 ring-offset-2 ring-gray-500 scale-110' : 'hover:scale-105'}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- PAGE 2: PRICING & CLEANING --- */}
+              {modalTab === 2 && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Cleaning Fee */}
+                  <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 space-y-2">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-teal-900">
+                      <Euro size={14} className="text-teal-600" />
+                      Πάγιο Τέλος Καθαριότητας (€ ανά κράτηση)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-teal-600 text-sm font-bold">€</span>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={propModalData.cleaning_fee ?? ''}
+                        onChange={e => setPropModalData((p: any) => ({ ...p, cleaning_fee: e.target.value }))}
+                        className="w-full border border-teal-300 rounded-xl pl-8 pr-3.5 py-2.5 text-sm font-bold text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        placeholder="π.χ. 50"
+                      />
+                    </div>
+                    <p className="text-[11px] text-teal-700 leading-relaxed">
+                      💡 Προστίθεται <strong>μία φορά ανά κράτηση</strong> στο τελικό ποσό. Δεν λογίζεται ως ενοίκιο στο ΑΑΔΕ.
+                    </p>
+                  </div>
+
+                  {/* Monthly Pricing 12 Months */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                        <CalendarDays size={14} className="text-amber-500" />
+                        Καθαρή Τιμή ανά Διανυκτέρευση (€/νύχτα για το {modalYear})
+                      </label>
+                      <div className="flex items-center gap-1 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setModalYear(y => y - 1)}
+                          className="px-2 py-0.5 border rounded-lg text-gray-500 hover:bg-gray-50"
+                        >
+                          ‹
+                        </button>
+                        <span className="font-bold text-gray-800">{modalYear}</span>
+                        <button
+                          type="button"
+                          onClick={() => setModalYear(y => y + 1)}
+                          className="px-2 py-0.5 border rounded-lg text-gray-500 hover:bg-gray-50"
+                        >
+                          ›
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {MONTHS.map(({ key, label }) => (
+                        <div key={key} className="p-2.5 bg-gray-50 rounded-xl border border-gray-200">
+                          <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                            {label}
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">€</span>
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="—"
+                              value={modalRates[key] ?? ''}
+                              onChange={e => setModalRates(r => ({ ...r, [key]: e.target.value }))}
+                              className="w-full pl-6 pr-2 py-1 text-xs font-bold border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Bottom Navigation & Submit */}
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100">
+                {modalTab === 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50"
+                    >
+                      Ακύρωση
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalTab(2)}
+                      className="px-5 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-sm font-bold hover:bg-blue-100 transition-colors flex items-center gap-1.5"
+                    >
+                      <span>Επόμενο: Τιμές & Καθαριότητα →</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setModalTab(1)}
+                      className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50"
+                    >
+                      ← Πίσω στα Στοιχεία
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-sm transition-colors"
+                    >
+                      {editingProp ? 'Αποθήκευση Όλων' : 'Δημιουργία Ακινήτου'}
+                    </button>
+                  </>
+                )}
               </div>
             </form>
           </div>
@@ -417,7 +623,7 @@ export default function PropertiesPage() {
           <p className="text-gray-600 font-semibold text-base">Δεν έχετε ακίνητα ακόμα</p>
           <p className="text-gray-400 text-sm mt-1">Πατήστε «Νέο Ακίνητο» για να ξεκινήσετε.</p>
           <button
-            onClick={() => { setNewProp(EMPTY_PROP); setShowAddProperty(true) }}
+            onClick={openAddModal}
             className="mt-5 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors"
           >
             <Plus size={16} /> Προσθήκη Πρώτου Ακινήτου
@@ -471,7 +677,7 @@ export default function PropertiesPage() {
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
-                      onClick={() => setEditingProp(prop)}
+                      onClick={() => openEditModal(prop)}
                       className="text-gray-400 hover:text-blue-600 p-1.5 rounded-xl hover:bg-blue-50 transition-colors"
                       title="Επεξεργασία"
                     >
@@ -488,7 +694,12 @@ export default function PropertiesPage() {
                 </div>
 
                 {/* Monthly Pricing Panel */}
-                <MonthlyPricingPanel propertyId={prop.id} propertyName={prop.name} />
+                <MonthlyPricingPanel
+                  propertyId={prop.id}
+                  propertyName={prop.name}
+                  initialCleaningFee={prop.cleaning_fee}
+                  onPropertyUpdated={fetchData}
+                />
 
                 {/* iCal sources section */}
                 <div className="border-t border-gray-100">
@@ -541,7 +752,6 @@ export default function PropertiesPage() {
                           </div>
                           {propIcals.map(source => {
                             const pl = PLATFORM_LABELS[source.platform] ?? PLATFORM_LABELS.other
-                            // Format last sync time nicely
                             const lastSync = source.last_synced_at ? new Date(source.last_synced_at) : null
                             const minutesAgo = lastSync ? Math.round((Date.now() - lastSync.getTime()) / 60000) : null
                             const syncLabel = minutesAgo === null

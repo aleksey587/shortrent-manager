@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CalendarDays, ChevronDown, ChevronUp, Save, Euro, RefreshCw, Zap } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronUp, Save, Euro, RefreshCw, Zap, Sparkles, Wand2 } from 'lucide-react'
 
 const MONTHS = [
   { key: 1, label: 'Ιανουάριος' },
@@ -22,47 +22,82 @@ const MONTHS = [
 interface Props {
   propertyId: string
   propertyName: string
+  initialCleaningFee?: number | null
+  onPropertyUpdated?: () => void
 }
 
-interface MonthlyRate {
-  id?: string
-  month: number
-  year: number
-  price_per_night: number
-}
-
-export default function MonthlyPricingPanel({ propertyId, propertyName }: Props) {
+export default function MonthlyPricingPanel({ propertyId, propertyName, initialCleaningFee, onPropertyUpdated }: Props) {
   const supabase = createClient()
   const [open, setOpen] = useState(false)
   const [year, setYear] = useState(new Date().getFullYear())
   const [rates, setRates] = useState<Record<number, string>>({})
+  const [cleaningFee, setCleaningFee] = useState<string>(initialCleaningFee ? String(initialCleaningFee) : '')
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [applyResult, setApplyResult] = useState<string | null>(null)
+  const [showQuickFill, setShowQuickFill] = useState(false)
+  const [quickHigh, setQuickHigh] = useState('120')
+  const [quickMid, setQuickMid] = useState('85')
+  const [quickLow, setQuickLow] = useState('70')
 
   useEffect(() => {
-    if (open) loadRates()
+    if (initialCleaningFee !== undefined) {
+      setCleaningFee(initialCleaningFee ? String(initialCleaningFee) : '')
+    }
+  }, [initialCleaningFee])
+
+  useEffect(() => {
+    if (open) loadData()
   }, [open, year])
 
-  async function loadRates() {
+  async function loadData() {
     setLoading(true)
-    const { data } = await supabase
-      .from('monthly_rates')
-      .select('*')
-      .eq('property_id', propertyId)
-      .eq('year', year)
+    const [{ data: ratesData }, { data: propData }] = await Promise.all([
+      supabase
+        .from('monthly_rates')
+        .select('*')
+        .eq('property_id', propertyId)
+        .eq('year', year),
+      supabase
+        .from('properties')
+        .select('cleaning_fee')
+        .eq('id', propertyId)
+        .single()
+    ])
 
     const map: Record<number, string> = {}
-    for (const r of data ?? []) {
+    for (const r of ratesData ?? []) {
       map[r.month] = String(r.price_per_night)
     }
     setRates(map)
+    if (propData?.cleaning_fee != null) {
+      setCleaningFee(String(propData.cleaning_fee))
+    }
     setLoading(false)
   }
 
-  async function saveRates(e: React.FormEvent) {
+  function applyQuickFill() {
+    const newRates: Record<number, string> = { ...rates }
+    // High: Jun-Sep (6-9)
+    for (let m = 6; m <= 9; m++) newRates[m] = quickHigh
+    // Mid: Apr, May, Oct (4, 5, 10)
+    newRates[4] = quickMid
+    newRates[5] = quickMid
+    newRates[10] = quickMid
+    // Low: Nov-Mar (1, 2, 3, 11, 12)
+    newRates[1] = quickLow
+    newRates[2] = quickLow
+    newRates[3] = quickLow
+    newRates[11] = quickLow
+    newRates[12] = quickLow
+
+    setRates(newRates)
+    setShowQuickFill(false)
+  }
+
+  async function saveAll(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     setSaved(false)
@@ -70,7 +105,14 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSaving(false); return }
 
-    // Upsert each month that has a value
+    // 1. Update cleaning fee on property
+    const cleanNum = cleaningFee ? parseFloat(cleaningFee) : 0
+    await supabase
+      .from('properties')
+      .update({ cleaning_fee: isNaN(cleanNum) ? 0 : cleanNum })
+      .eq('id', propertyId)
+
+    // 2. Upsert each month that has a value
     for (const [monthStr, priceStr] of Object.entries(rates)) {
       const month = Number(monthStr)
       const price = parseFloat(priceStr)
@@ -92,6 +134,7 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
 
     setSaving(false)
     setSaved(true)
+    onPropertyUpdated?.()
     setTimeout(() => setSaved(false), 2500)
   }
 
@@ -107,6 +150,7 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
       const data = await res.json()
       if (data.success) {
         setApplyResult(`✅ Ενημερώθηκαν ${data.updated} κρατήσεις!`)
+        onPropertyUpdated?.()
       } else {
         setApplyResult(`❌ Σφάλμα: ${data.error}`)
       }
@@ -128,10 +172,15 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
         <div className="flex items-center gap-2.5">
           <CalendarDays size={16} className="text-amber-500" />
           <span className="text-sm font-semibold text-gray-700">
-            Τιμές ανά Μήνα (Χρέωση / Νύχτα)
+            Τιμές ανά Μήνα & Τέλος Καθαριότητας
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {cleaningFee && parseFloat(cleaningFee) > 0 && (
+            <span className="text-[10px] text-teal-700 font-bold bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+              Καθαριότητα: €{cleaningFee}
+            </span>
+          )}
           <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
             ΤΙΜΟΛΟΓΗΣΗ
           </span>
@@ -140,55 +189,182 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
       </button>
 
       {open && (
-        <div className="px-6 pb-5">
-          {/* Year selector */}
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              type="button"
-              onClick={() => setYear(y => y - 1)}
-              className="px-3 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              ‹ {year - 1}
-            </button>
-            <span className="text-sm font-extrabold text-gray-900 flex-1 text-center">{year}</span>
-            <button
-              type="button"
-              onClick={() => setYear(y => y + 1)}
-              className="px-3 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              {year + 1} ›
-            </button>
-          </div>
-
+        <div className="px-6 pb-6 pt-1">
           {loading ? (
-            <div className="text-xs text-gray-400 py-4 text-center">Φόρτωση τιμών...</div>
+            <div className="py-8 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+              <RefreshCw className="animate-spin" size={14} /> Φόρτωση τιμών...
+            </div>
           ) : (
-            <form onSubmit={saveRates} className="space-y-2">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <form onSubmit={saveAll} className="space-y-4">
+              {/* Cleaning Fee Header Section */}
+              <div className="bg-gradient-to-r from-teal-50/70 to-emerald-50/70 border border-teal-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-teal-900">
+                    <Euro size={14} className="text-teal-600" />
+                    <span>Πάγιο Τέλος Καθαριότητας (€ ανά κράτηση)</span>
+                  </div>
+                  <p className="text-[11px] text-teal-700 mt-0.5">
+                    Χρεώνεται <strong>1 φορά ανά κράτηση</strong> (όχι ανά νύχτα). Δεν φορολογείται ως ενοίκιο στο ΑΑΔΕ.
+                  </p>
+                </div>
+                <div className="relative w-36 shrink-0">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-600 text-sm font-bold">€</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="π.χ. 50"
+                    value={cleaningFee}
+                    onChange={e => setCleaningFee(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 text-sm font-bold text-gray-900 bg-white border border-teal-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Instructions banner */}
+              <div className="bg-amber-50/70 border border-amber-200/70 rounded-2xl p-3.5 text-xs text-amber-900 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold flex items-center gap-1">
+                    💡 Πώς ορίζονται οι τιμές:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickFill(!showQuickFill)}
+                    className="text-[11px] font-bold text-amber-700 hover:text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-amber-200/80 transition-colors"
+                  >
+                    <Wand2 size={12} />
+                    {showQuickFill ? 'Κλείσιμο Αυτόματης Συμπλήρωσης' : 'Μαζική Συμπλήρωση Τιμών'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Συμπληρώστε την <strong>καθαρή τιμή ανά διανυκτέρευση (€/νύχτα)</strong> για κάθε μήνα. Το σύνολο κάθε κράτησης υπολογίζεται αυτόματα: <em>(Νύχτες × Τιμή Μήνα) + Τέλος Καθαριότητας</em>.
+                </p>
+              </div>
+
+              {/* Quick Fill Tool Drawer */}
+              {showQuickFill && (
+                <div className="bg-white border border-amber-300 rounded-2xl p-4 shadow-sm space-y-3 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
+                    <Sparkles size={14} className="text-amber-500" />
+                    <span>Μαζικός Ορισμός Τιμών ανά Εποχή</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                        ☀️ Υψηλή Σεζόν (Ιουν–Σεπ)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">€</span>
+                        <input
+                          type="number"
+                          value={quickHigh}
+                          onChange={e => setQuickHigh(e.target.value)}
+                          className="w-full pl-6 pr-2 py-1.5 text-xs font-bold border border-gray-200 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                        🌸 Μεσαία Σεζόν (Απρ, Μαΐ, Οκτ)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">€</span>
+                        <input
+                          type="number"
+                          value={quickMid}
+                          onChange={e => setQuickMid(e.target.value)}
+                          className="w-full pl-6 pr-2 py-1.5 text-xs font-bold border border-gray-200 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                        ❄️ Χαμηλή Σεζόν (Νοε–Μαρ)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">€</span>
+                        <input
+                          type="number"
+                          value={quickLow}
+                          onChange={e => setQuickLow(e.target.value)}
+                          className="w-full pl-6 pr-2 py-1.5 text-xs font-bold border border-gray-200 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickFill(false)}
+                      className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg"
+                    >
+                      Ακύρωση
+                    </button>
+                    <button
+                      type="button"
+                      onClick={applyQuickFill}
+                      className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow-xs transition-colors"
+                    >
+                      Εφαρμογή στους 12 Μήνες
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Year Navigation */}
+              <div className="flex items-center justify-between py-1">
+                <button
+                  type="button"
+                  onClick={() => setYear(y => y - 1)}
+                  className="text-xs text-gray-500 hover:text-gray-900 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  ‹ {year - 1}
+                </button>
+                <span className="text-base font-extrabold text-gray-900 tracking-tight">
+                  {year}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setYear(y => y + 1)}
+                  className="text-xs text-gray-500 hover:text-gray-900 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  {year + 1} ›
+                </button>
+              </div>
+
+              {/* 12 Month Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                 {MONTHS.map(({ key, label }) => {
                   const isCurrent = key === currentMonth && year === new Date().getFullYear()
                   return (
                     <div
                       key={key}
-                      className={`rounded-xl border p-2.5 transition-colors ${
-                        isCurrent ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200 bg-gray-50/50'
+                      className={`p-3 rounded-2xl border transition-all ${
+                        isCurrent
+                          ? 'border-blue-300 bg-blue-50/50 shadow-xs'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >
-                      <label className={`block text-[10px] font-bold mb-1.5 ${isCurrent ? 'text-blue-700' : 'text-gray-500'}`}>
-                        {label} {isCurrent && '(τρέχων)'}
+                      <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                        {label}
+                        {isCurrent && (
+                          <span className="text-[10px] text-blue-600 font-semibold ml-1">
+                            (τρέχων)
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Euro size={11} />
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">
+                          €
                         </span>
                         <input
                           type="number"
+                          step="1"
                           min="0"
-                          step="0.5"
                           placeholder="—"
                           value={rates[key] ?? ''}
                           onChange={e => setRates(r => ({ ...r, [key]: e.target.value }))}
-                          className="w-full pl-5 pr-1.5 py-1.5 text-sm font-semibold text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-6 pr-2 py-1.5 text-sm font-bold text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
@@ -196,29 +372,30 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
                 })}
               </div>
 
+              {/* Save Button */}
               <div className="pt-2 flex items-center gap-3 flex-wrap">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
                 >
-                  <Save size={13} />
-                  {saving ? 'Αποθήκευση...' : `Αποθήκευση Τιμών ${year}`}
+                  <Save size={14} />
+                  {saving ? 'Αποθήκευση...' : `Αποθήκευση Τιμών & Καθαριότητας (${year})`}
                 </button>
                 {saved && (
-                  <span className="text-xs font-semibold text-emerald-600 animate-in fade-in duration-300">
-                    ✅ Αποθηκεύτηκε!
+                  <span className="text-xs font-bold text-emerald-600 animate-in fade-in duration-300">
+                    ✅ Αποθηκεύτηκε επιτυχώς!
                   </span>
                 )}
               </div>
 
               {/* Apply to existing bookings */}
-              <div className="mt-3 p-3.5 bg-blue-50 border border-blue-200 rounded-2xl space-y-2.5">
+              <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-2.5">
                 <p className="text-xs font-bold text-blue-900">
                   ⚡ Εφαρμογή στις Υπάρχουσες Κρατήσεις
                 </p>
-                <p className="text-[10px] text-blue-700 leading-relaxed">
-                  Εφάρμοσε τις τιμές ανά μήνα σε κρατήσεις που ήρθαν από iCal/Airbnb και δεν έχουν ποσό.
+                <p className="text-[11px] text-blue-700 leading-relaxed">
+                  Εφάρμοσε τις μηνιαίες τιμές και το τέλος καθαριότητας στις κρατήσεις που ήρθαν από iCal / Airbnb / Booking.
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   <button
@@ -234,28 +411,23 @@ export default function MonthlyPricingPanel({ propertyId, propertyName }: Props)
                     type="button"
                     disabled={applying}
                     onClick={() => {
-                      if (confirm('Θα αντικατασταθούν ΟΛΕΣ οι υπάρχουσες τιμές. Συνεχίζεις;')) {
+                      if (confirm('Θα επαναϋπολογιστούν ΟΛΕΣ οι κρατήσεις αυτού του ακινήτου βάσει των νέων τιμών & καθαριότητας. Συνεχίζετε;')) {
                         applyToBookings(true)
                       }
                     }}
                     className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
                   >
                     <RefreshCw size={13} />
-                    Αντικατάσταση ΟΛΩΝ
+                    Αντικατάσταση & Επανυπολογισμός ΟΛΩΝ
                   </button>
                 </div>
                 {applyResult && (
-                  <p className="text-xs font-semibold text-blue-900 animate-in fade-in duration-300">
+                  <p className="text-xs font-bold text-blue-900 animate-in fade-in duration-300">
                     {applyResult}
                   </p>
                 )}
               </div>
-
-              <p className="text-[10px] text-gray-400 leading-relaxed pt-1">
-                💡 Όταν προσθέτεις χειροκίνητη κράτηση, η τιμή ανά νύχτα θα προτείνεται αυτόματα βάσει του μήνα.
-              </p>
             </form>
-
           )}
         </div>
       )}
