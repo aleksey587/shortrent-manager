@@ -55,23 +55,32 @@ export default function ExportPDF() {
       doc.text(`Εκτύπωση: ${format(new Date(), 'd MMMM yyyy', { locale: el })}  |  Ιδιοκτήτης: ${user?.email ?? ''}`, 14, 32)
 
       // Summary calculations
-      const totalIncome = bookings.reduce((s, b) => s + (b.total_price ?? 0), 0)
+      const totalGrossIncome = bookings.reduce((s, b) => s + (b.total_price ?? 0), 0)
+      const totalCleaningFee = bookings.reduce((s, b) => s + (b.cleaning_fee ?? 0), 0)
+      const totalTaxableRental = Math.max(0, totalGrossIncome - totalCleaningFee)
+
       const totalClimateFee = bookings.reduce((s, b) => {
         const cIn = parseISO(b.check_in)
         const cOut = parseISO(b.check_out)
         return s + calculateClimateFee(cIn, cOut)
       }, 0)
-      const taxReport = calculateFullTaxReport(totalIncome, totalClimateFee, properties?.length ?? 1)
+      const taxReport = calculateFullTaxReport(totalTaxableRental, totalClimateFee, properties?.length ?? 1)
 
       // Summary by property
-      const propSummary: Record<string, { name: string; income: number; nights: number; count: number; climate: number }> = {}
+      const propSummary: Record<string, { name: string; gross: number; cleaning: number; rental: number; nights: number; count: number; climate: number }> = {}
       for (const b of bookings) {
         const propName = (b.properties as any)?.name ?? 'Άγνωστο'
         if (!propSummary[b.property_id]) {
-          propSummary[b.property_id] = { name: propName, income: 0, nights: 0, count: 0, climate: 0 }
+          propSummary[b.property_id] = { name: propName, gross: 0, cleaning: 0, rental: 0, nights: 0, count: 0, climate: 0 }
         }
         const bClimate = calculateClimateFee(parseISO(b.check_in), parseISO(b.check_out))
-        propSummary[b.property_id].income += b.total_price ?? 0
+        const bGross = b.total_price ?? 0
+        const bClean = b.cleaning_fee ?? 0
+        const bRental = Math.max(0, bGross - bClean)
+
+        propSummary[b.property_id].gross += bGross
+        propSummary[b.property_id].cleaning += bClean
+        propSummary[b.property_id].rental += bRental
         propSummary[b.property_id].nights += b.nights ?? 0
         propSummary[b.property_id].count += 1
         propSummary[b.property_id].climate += bClimate
@@ -83,35 +92,39 @@ export default function ExportPDF() {
 
       autoTable(doc, {
         startY: 46,
-        head: [['Ακίνητο', 'Κρατήσεις', 'Νύχτες', 'Συνολικά Έσοδα (€)', 'Τέλος Κλιματικής Κρίσης (€)']],
+        head: [['Ακίνητο', 'Κρατήσεις', 'Νύχτες', 'Σύνολο Είσπραξης (€)', 'Καθαριότητα (€)', 'Φορολογητέο Μίσθωμα (€)', 'Τέλος Κλιμ. Κρίσης (€)']],
         body: Object.values(propSummary).map(p => [
           p.name,
           p.count.toString(),
           p.nights.toString(),
-          p.income.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+          p.gross.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+          p.cleaning.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+          p.rental.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
           p.climate.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
         ]),
         foot: [[
           'ΣΥΝΟΛΟ',
           bookings.length.toString(),
           Object.values(propSummary).reduce((s, p) => s + p.nights, 0).toString(),
-          taxReport.annualIncome.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+          totalGrossIncome.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+          totalCleaningFee.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+          totalTaxableRental.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
           taxReport.totalClimateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
         ]],
-        headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-        footStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9 },
-        bodyStyles: { fontSize: 9 },
+        headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+        footStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
         margin: { left: 14, right: 14 },
       })
 
       // Tax estimation box
       const afterPropY = (doc as any).lastAutoTable?.finalY ?? 80
-      doc.setFontSize(10)
+      doc.setFontSize(9)
       doc.setTextColor(50, 50, 50)
       doc.text(
-        `Εκτιμώμενος Φόρος Εισοδήματος (Ε1/Ε2): €${taxReport.estimatedIncomeTax.toLocaleString('el-GR', { minimumFractionDigits: 2 })}  |  ` +
-        `Σύνολο Τέλους Κλιματικής Κρίσης (myAADE): €${taxReport.totalClimateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}  |  ` +
-        `Καθαρό Εκτιμώμενο: €${taxReport.netEstimatedIncome.toLocaleString('el-GR', { minimumFractionDigits: 2 })}`,
+        `Καθαρό Φορολογητέο Μίσθωμα (Ε2/ΑΑΔΕ): €${totalTaxableRental.toLocaleString('el-GR', { minimumFractionDigits: 2 })}  |  ` +
+        `Εκτιμώμενος Φόρος: €${taxReport.estimatedIncomeTax.toLocaleString('el-GR', { minimumFractionDigits: 2 })}  |  ` +
+        `Τέλος Κλιματικής Κρίσης (myAADE): €${taxReport.totalClimateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}`,
         14, afterPropY + 8
       )
 
@@ -119,14 +132,18 @@ export default function ExportPDF() {
       const months = Array.from({ length: 12 }, (_, i) => i)
       const monthlyData = months.map(m => {
         const mBookings = bookings.filter(b => new Date(b.check_in).getMonth() === m)
-        const income = mBookings.reduce((s, b) => s + (b.total_price ?? 0), 0)
+        const gross = mBookings.reduce((s, b) => s + (b.total_price ?? 0), 0)
+        const cleaning = mBookings.reduce((s, b) => s + (b.cleaning_fee ?? 0), 0)
+        const rental = Math.max(0, gross - cleaning)
         const nights = mBookings.reduce((s, b) => s + (b.nights ?? 0), 0)
         const climateFee = mBookings.reduce((s, b) => s + calculateClimateFee(parseISO(b.check_in), parseISO(b.check_out)), 0)
         return {
           month: format(new Date(year, m, 1), 'MMMM', { locale: el }),
           count: mBookings.length,
           nights,
-          income,
+          gross,
+          cleaning,
+          rental,
           climateFee,
         }
       }).filter(m => m.count > 0)
@@ -138,7 +155,7 @@ export default function ExportPDF() {
 
         autoTable(doc, {
           startY: afterPropY + 22,
-          head: [['Μήνας', 'Κρατήσεις', 'Νύχτες', 'Έσοδα (€)', 'Τέλος Κλιματικής Κρίσης (€)', 'Deadline Δήλωσης ΑΑΔΕ', 'Deadline myAADE (Τέλος)']],
+          head: [['Μήνας', 'Κρατήσεις', 'Νύχτες', 'Σύνολο (€)', 'Καθαριότητα (€)', 'Φορολογητέο (€)', 'Τέλος Κλιμ. (€)', 'Deadline ΑΑΔΕ', 'Deadline myAADE']],
           body: monthlyData.map(m => {
             const monthIndex = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'].indexOf(m.month)
             const aadeDeadline = new Date(year, monthIndex + 1, 20)
@@ -147,59 +164,55 @@ export default function ExportPDF() {
               m.month,
               m.count.toString(),
               m.nights.toString(),
-              m.income.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+              m.gross.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+              m.cleaning.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+              m.rental.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
               m.climateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
               format(aadeDeadline, 'd MMM yyyy', { locale: el }),
               format(climateDeadline, 'd MMM yyyy', { locale: el }),
             ]
           }),
-          headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
-          bodyStyles: { fontSize: 8 },
+          headStyles: { fillColor: [37, 99, 235], fontSize: 7.5 },
+          bodyStyles: { fontSize: 7.5 },
           margin: { left: 14, right: 14 },
         })
       }
 
-      // Detailed bookings page
-      doc.addPage()
+      // Individual Bookings List
+      const afterMonthY = (doc as any).lastAutoTable?.finalY ?? 130
+      if (afterMonthY < 160) {
+        doc.setFontSize(11)
+        doc.setTextColor(30, 30, 30)
+        doc.text('3. Αναλυτικός Πίνακας Κρατήσεων', 14, afterMonthY + 10)
 
-      doc.setFontSize(11)
-      doc.setTextColor(30, 30, 30)
-      doc.text(`3. Αναλυτικό Ημερολόγιο Κρατήσεων & Επιβαρύνσεων ${year}`, 14, 16)
-
-      autoTable(doc, {
-        startY: 20,
-        head: [['Ακίνητο', 'Επισκέπτης', 'Check-in', 'Check-out', 'Νύχτες', 'Πλατφόρμα', 'Έσοδο (€)', 'Τέλος Κλιμ. (€)', 'Deadline ΑΑΔΕ']],
-        body: bookings.map(b => {
-          const checkIn = parseISO(b.check_in)
-          const checkOut = parseISO(b.check_out)
-          const climateFee = calculateClimateFee(checkIn, checkOut)
-          const deadlineDate = new Date(checkOut.getFullYear(), checkOut.getMonth() + 1, 20)
-          return [
+        autoTable(doc, {
+          startY: afterMonthY + 14,
+          head: [['Ακίνητο', 'Επισκέπτης', 'Check-in', 'Check-out', 'Νύχτες', 'Σύνολο (€)', 'Καθαριότητα (€)', 'Φορολογητέο (€)', 'Πλατφόρμα']],
+          body: bookings.map(b => [
             (b.properties as any)?.name ?? '—',
-            b.guest_name ?? '—',
-            format(checkIn, 'd/M/yyyy'),
-            format(checkOut, 'd/M/yyyy'),
-            (b.nights ?? 0).toString(),
+            b.guest_name || '—',
+            format(parseISO(b.check_in), 'dd/MM/yyyy'),
+            format(parseISO(b.check_out), 'dd/MM/yyyy'),
+            b.nights.toString(),
+            (b.total_price ?? 0).toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+            (b.cleaning_fee ?? 0).toLocaleString('el-GR', { minimumFractionDigits: 2 }),
+            Math.max(0, (b.total_price ?? 0) - (b.cleaning_fee ?? 0)).toLocaleString('el-GR', { minimumFractionDigits: 2 }),
             PLATFORM_LABELS[b.platform] ?? b.platform,
-            b.total_price ? b.total_price.toLocaleString('el-GR', { minimumFractionDigits: 2 }) : '—',
-            climateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 }),
-            format(deadlineDate, 'd/M/yyyy'),
-          ]
-        }),
-        headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
-        bodyStyles: { fontSize: 8 },
-        margin: { left: 14, right: 14 },
-        columnStyles: { 8: { textColor: [220, 38, 38] } },
-      })
+          ]),
+          headStyles: { fillColor: [71, 85, 105], fontSize: 7 },
+          bodyStyles: { fontSize: 7 },
+          margin: { left: 14, right: 14 },
+        })
+      }
 
-      // Footer note
-      const lastY = (doc as any).lastAutoTable?.finalY ?? 200
-      doc.setFontSize(8)
-      doc.setTextColor(130, 130, 130)
-      doc.text(
-        'GreekHost · Έτοιμο αντίγραφο για φοροτεχνικό/λογιστή · myAADE / gsis.gr/taxisnet/short_term_letting',
-        14, lastY + 8
-      )
+      // Footer
+      const pageCount = (doc as any).internal.getNumberOfPages()
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        doc.setFontSize(8)
+        doc.setTextColor(150, 150, 150)
+        doc.text(`Σελίδα ${i} από ${pageCount}`, 260, 200)
+      }
 
       doc.save(`greekhost-φορολογικη-αναφορα-${year}.pdf`)
     } catch (err) {
@@ -216,7 +229,9 @@ export default function ExportPDF() {
       .gte('check_in', `${year}-01-01`)
       .lte('check_in', `${year}-12-31`)
 
-    const totalIncome = bookings?.reduce((s, b) => s + (b.total_price ?? 0), 0) ?? 0
+    const totalGross = bookings?.reduce((s, b) => s + (b.total_price ?? 0), 0) ?? 0
+    const totalClean = bookings?.reduce((s, b) => s + (b.cleaning_fee ?? 0), 0) ?? 0
+    const totalTaxable = Math.max(0, totalGross - totalClean)
     const totalNights = bookings?.reduce((s, b) => s + (b.nights ?? 0), 0) ?? 0
     const totalClimateFee = bookings?.reduce((s, b) => s + calculateClimateFee(parseISO(b.check_in), parseISO(b.check_out)), 0) ?? 0
 
@@ -226,9 +241,11 @@ export default function ExportPDF() {
       `Σας αποστέλλω τη φορολογική σύνοψη των βραχυχρόνιων μισθώσεών μου για το έτος ${year}:\n\n` +
       `• Συνολικές Κρατήσεις: ${bookings?.length ?? 0}\n` +
       `• Συνολικές Διανυκτερεύσεις: ${totalNights}\n` +
-      `• Ακαθάριστα Έσοδα: €${totalIncome.toLocaleString('el-GR', { minimumFractionDigits: 2 })}\n` +
+      `• Συνολική Είσπραξη (Gross): €${totalGross.toLocaleString('el-GR', { minimumFractionDigits: 2 })}\n` +
+      `• Τέλη Καθαριότητας: €${totalClean.toLocaleString('el-GR', { minimumFractionDigits: 2 })}\n` +
+      `• Καθαρό Φορολογητέο Μίσθωμα (Ε2/ΑΑΔΕ): €${totalTaxable.toLocaleString('el-GR', { minimumFractionDigits: 2 })}\n` +
       `• Τέλος Ανθεκτικότητας (Κλιματικής Κρίσης): €${totalClimateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}\n\n` +
-      `(Επισυνάπτεται η αναλυτική έκθεση PDF που κατέβασα από το ShortRent Manager).\n\n` +
+      `(Επισυνάπτεται η αναλυτική έκθεση PDF που κατέβασα από το GreekHost).\n\n` +
       `Ευχαριστώ!`
     )
 

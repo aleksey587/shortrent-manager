@@ -13,6 +13,8 @@ interface BookingData {
   check_in: string
   check_out: string
   nights: number
+  price_per_night?: number | null
+  cleaning_fee?: number | null
   total_price: number | null
   platform: string
   propertyName?: string
@@ -36,16 +38,23 @@ export default function ShareBookingModal({ booking, accountantEmail = '', isPro
   const climateFee = calculateClimateFee(checkInDate, checkOutDate)
   const aadeDeadline = getBookingDeclarationDeadline(checkOutDate)
 
-  const formattedMessage = `📌 Νέα Κράτηση για Δήλωση στην ΑΑΔΕ
+  const totalPrice = booking.total_price ?? 0
+  const cleaningFee = booking.cleaning_fee ?? 0
+  const taxableRental = Math.max(0, totalPrice - cleaningFee)
+
+  const formattedMessage = `📌 Στοιχεία Κράτησης για Δήλωση στην ΑΑΔΕ
 ------------------------------------
 🏠 Ακίνητο: ${booking.propertyName || 'Ακίνητο'}${booking.amaNumber ? ` (ΑΜΑ: ${booking.amaNumber})` : ''}
 👤 Επισκέπτης: ${booking.guest_name || '—'}
 📅 Check-in: ${format(checkInDate, 'dd/MM/yyyy')}
 📅 Check-out: ${format(checkOutDate, 'dd/MM/yyyy')} (${booking.nights} διανυκτερεύσεις)
 💳 Πλατφόρμα: ${booking.platform}
-💰 Μίσθωμα: €${(booking.total_price ?? 0).toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+------------------------------------
+💰 Φορολογητέο Μίσθωμα (Δήλωση ΑΑΔΕ): €${taxableRental.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+🧹 Τέλος Καθαριότητας: €${cleaningFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+💵 Συνολική Είσπραξη: €${totalPrice.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
 🏨 Τέλος Κλιματικής Κρίσης (myAADE): €${climateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
-⏰ Καταληκτική Προθεσμία Δήλωσης ΑΑΔΕ: ${format(aadeDeadline, 'dd/MM/yyyy')}
+⏰ Καταληκτική Προθεσμία Δήλωσης: ${format(aadeDeadline, 'dd/MM/yyyy')}
 ------------------------------------`
 
   const copyToClipboard = () => {

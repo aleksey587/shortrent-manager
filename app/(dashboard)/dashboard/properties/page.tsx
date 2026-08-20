@@ -170,6 +170,8 @@ export default function PropertiesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    const cleanNum = editingProp.cleaning_fee != null ? parseFloat(String(editingProp.cleaning_fee)) : 0
+
     const { error } = await supabase.from('properties').update({
       name: editingProp.name,
       address: editingProp.address || null,
