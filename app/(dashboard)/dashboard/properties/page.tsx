@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Plus, Trash2, RefreshCw, Home, ChevronDown, ChevronUp,
-  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check
+  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock
 } from 'lucide-react'
 import MonthlyPricingPanel from '@/components/properties/MonthlyPricingPanel'
 
@@ -498,32 +498,49 @@ export default function PropertiesPage() {
                         </div>
                       ) : (
                         <div className="space-y-2">
+                          {/* Auto-sync notice */}
+                          <div className="flex items-center gap-2 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                            <Clock size={11} className="shrink-0" />
+                            <span className="font-semibold">Αυτόματη ανανέωση κάθε 6 ώρες · Μπορείτε και χειροκίνητα με το κουμπί ↻</span>
+                          </div>
                           {propIcals.map(source => {
                             const pl = PLATFORM_LABELS[source.platform] ?? PLATFORM_LABELS.other
+                            // Format last sync time nicely
+                            const lastSync = source.last_synced_at ? new Date(source.last_synced_at) : null
+                            const minutesAgo = lastSync ? Math.round((Date.now() - lastSync.getTime()) / 60000) : null
+                            const syncLabel = minutesAgo === null
+                              ? 'Δεν έχει γίνει sync'
+                              : minutesAgo < 60
+                              ? `${minutesAgo} λεπτά πριν`
+                              : minutesAgo < 1440
+                              ? `${Math.round(minutesAgo / 60)} ώρες πριν`
+                              : lastSync!.toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+
                             return (
                               <div key={source.id} className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3">
                                 <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 ${pl.color}`}>
                                   {pl.label}
                                 </span>
-                                <span className="text-xs text-gray-400 font-mono flex-1 truncate">
-                                  {source.url}
-                                </span>
-                                {source.last_synced_at && (
-                                  <span className="text-[10px] text-gray-400 shrink-0">
-                                    Sync: {new Date(source.last_synced_at).toLocaleDateString('el-GR')}
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-xs text-gray-400 font-mono block truncate">
+                                    {source.url}
                                   </span>
-                                )}
+                                  <span className={`text-[10px] flex items-center gap-0.5 mt-0.5 ${lastSync ? 'text-gray-400' : 'text-amber-500'}`}>
+                                    <Clock size={9} />
+                                    {syncLabel}
+                                  </span>
+                                </div>
                                 <button
                                   onClick={() => syncIcal(source.id, prop.id)}
                                   disabled={syncing === source.id}
-                                  className="text-blue-500 hover:text-blue-700 p-1.5 rounded-xl hover:bg-blue-50 disabled:opacity-50 transition-colors"
+                                  className="text-blue-500 hover:text-blue-700 p-1.5 rounded-xl hover:bg-blue-50 disabled:opacity-50 transition-colors shrink-0"
                                   title="Sync τώρα"
                                 >
                                   <RefreshCw size={14} className={syncing === source.id ? 'animate-spin' : ''} />
                                 </button>
                                 <button
                                   onClick={() => deleteIcalSource(source.id)}
-                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-xl hover:bg-red-50 transition-colors"
+                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-xl hover:bg-red-50 transition-colors shrink-0"
                                   title="Αφαίρεση"
                                 >
                                   <Trash2 size={14} />
