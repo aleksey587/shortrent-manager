@@ -19,7 +19,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import SupportModal from '@/components/SupportModal'
 import InstallAppModal from '@/components/InstallAppModal'
-import { isSuperAdmin } from '@/lib/permissions'
+import { isSuperAdmin, getUserSubscription, isProUser, getUserTier } from '@/lib/permissions'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Επισκόπηση', shortLabel: 'Αρχική' },
@@ -44,6 +44,9 @@ export default function Sidebar() {
   }, [])
 
   const isSuper = isSuperAdmin(userEmail)
+  const isPro = isProUser(userEmail)
+  const subInfo = getUserSubscription(userEmail)
+  const tier = getUserTier(userEmail)
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -63,6 +66,10 @@ export default function Sidebar() {
             {isSuper ? (
               <span className="text-amber-600 font-bold flex items-center gap-0.5">
                 👑 Super Admin
+              </span>
+            ) : tier === 'pro' ? (
+              <span className="text-purple-600 font-bold flex items-center gap-0.5">
+                ⭐ Pro Member
               </span>
             ) : (
               <span className="text-blue-600">Bnb & Tax Manager</span>
@@ -91,13 +98,23 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-3 pb-4 space-y-2">
-        {/* Upgrade pill box or Super Admin Active Badge */}
+        {/* Upgrade pill box / Active Pro / Super Admin Badge */}
         {isSuper ? (
           <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 rounded-2xl p-3 text-center shadow-xs">
             <div className="flex items-center justify-center gap-1 text-xs font-bold text-amber-900">
-              <span>👑 Super Admin (Full Access)</span>
+              <span>👑 Super Admin</span>
             </div>
             <p className="text-[11px] text-amber-800 mt-0.5 font-medium">Όλες οι λειτουργίες ξεκλείδωτες</p>
+          </div>
+        ) : isPro ? (
+          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-3 text-center shadow-xs">
+            <div className="flex items-center justify-center gap-1 text-xs font-bold text-purple-900">
+              <Sparkles size={13} className="text-purple-600" />
+              <span>Πλάνο Pro Ενεργό</span>
+            </div>
+            <p className="text-[10px] text-purple-700 mt-0.5 font-medium">
+              {subInfo ? subInfo.label : 'Έως 3 Ακίνητα & WhatsApp'}
+            </p>
           </div>
         ) : (
           <Link

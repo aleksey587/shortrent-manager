@@ -8,6 +8,7 @@ import {
   MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock, Sparkles, Wand2
 } from 'lucide-react'
 import MonthlyPricingPanel from '@/components/properties/MonthlyPricingPanel'
+import { isSuperAdmin, isProUser, getUserTier, getMaxPropertiesAllowed } from '@/lib/permissions'
 
 const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
   airbnb: { label: 'Airbnb', color: 'bg-red-100 text-red-700' },
@@ -63,6 +64,7 @@ export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([])
   const [icalSources, setIcalSources] = useState<IcalSource[]>([])
   const [loading, setLoading] = useState(true)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [showAddProperty, setShowAddProperty] = useState(false)
   const [editingProp, setEditingProp] = useState<Property | null>(null)
   const [showAddIcal, setShowAddIcal] = useState<string | null>(null)
@@ -83,10 +85,12 @@ export default function PropertiesPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: props }, { data: icals }] = await Promise.all([
+    const [{ data: props }, { data: icals }, { data: { user } }] = await Promise.all([
       supabase.from('properties').select('*').order('created_at'),
       supabase.from('ical_sources').select('*'),
+      supabase.auth.getUser(),
     ])
+    if (user?.email) setUserEmail(user.email)
     setProperties(props ?? [])
     setIcalSources(icals ?? [])
     setLoading(false)
@@ -275,9 +279,21 @@ export default function PropertiesPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/pricing"
-            className="hidden sm:inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-900 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-100/60 transition-colors"
+            className={`hidden sm:inline-flex items-center gap-1.5 border px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+              isSuperAdmin(userEmail)
+                ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100/60'
+                : getUserTier(userEmail) === 'pro'
+                ? 'bg-purple-50 border-purple-300 text-purple-900 hover:bg-purple-100/60'
+                : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-900 hover:bg-blue-100/60'
+            }`}
           >
-            <span>💎 Πλάνο Starter (1/1 δωρεάν)</span>
+            <span>
+              {isSuperAdmin(userEmail)
+                ? `👑 Super Admin (${properties.length} ακίνητα)`
+                : getUserTier(userEmail) === 'pro'
+                ? `⭐ Πλάνο Pro (${properties.length}/3 ακίνητα)`
+                : `💎 Πλάνο Starter (${properties.length}/1 δωρεάν)`}
+            </span>
           </Link>
           <button
             onClick={openAddModal}

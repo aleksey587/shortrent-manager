@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import { el } from 'date-fns/locale'
 import ShareBookingModal from '@/components/bookings/ShareBookingModal'
 import ImportCsvModal from '@/components/bookings/ImportCsvModal'
-import { isSuperAdmin } from '@/lib/permissions'
+import { isSuperAdmin, isProUser as checkIsProUser } from '@/lib/permissions'
 
 const PLATFORM_LABELS: Record<string, string> = {
   airbnb: 'Airbnb',
@@ -86,7 +86,7 @@ export default function BookingsPage() {
     ])
     setProperties(props ?? [])
     setBookings(books ?? [])
-    if (user && isSuperAdmin(user.email)) setIsProUser(true)
+    if (user && checkIsProUser(user.email)) setIsProUser(true)
     if (props && props.length > 0 && !form.property_id) {
       const firstProp = props[0]
       setForm(f => ({
