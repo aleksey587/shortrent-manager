@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { el } from 'date-fns/locale'
 import { calculateClimateFee, getBookingDeclarationDeadline } from '@/lib/aade'
+import { openWhatsAppMessage } from '@/lib/utils'
 
 interface BookingData {
   id: string
@@ -74,7 +75,7 @@ export default function ShareBookingModal({ booking, accountantEmail = '', isPro
       setShowProPrompt(true)
       return
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(formattedMessage)}`, '_blank')
+    openWhatsAppMessage(formattedMessage)
   }
 
   const shareViber = () => {

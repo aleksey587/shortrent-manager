@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { format, parseISO, isToday, isTomorrow, isPast, isFuture, addDays, startOfDay, endOfDay, isSameDay, getMonth, getYear } from 'date-fns'
 import { el } from 'date-fns/locale'
+import { openWhatsAppMessage } from '@/lib/utils'
 
 interface Property {
   id: string
@@ -204,11 +205,7 @@ export default function CleaningHubPage() {
 
   const sendMonthlyWhatsApp = () => {
     const prop = properties.find(p => p.id === monthlyPropertyId)
-    const phoneClean = prop?.cleaner_phone ? prop.cleaner_phone.replace(/\D/g, '') : ''
-    const url = phoneClean
-      ? `https://wa.me/${phoneClean}?text=${encodeURIComponent(monthlyMessageText)}`
-      : `https://wa.me/?text=${encodeURIComponent(monthlyMessageText)}`
-    window.open(url, '_blank')
+    openWhatsAppMessage(monthlyMessageText, prop?.cleaner_phone)
   }
 
   const copyMonthlyMessage = () => {
@@ -252,12 +249,7 @@ export default function CleaningHubPage() {
 
     msg += `\nΠαρακαλώ ενημερώστε με μόλις ολοκληρωθεί. Ευχαριστώ πολύ!`
 
-    const phoneClean = prop.cleaner_phone ? prop.cleaner_phone.replace(/\D/g, '') : ''
-    const url = phoneClean
-      ? `https://wa.me/${phoneClean}?text=${encodeURIComponent(msg)}`
-      : `https://wa.me/?text=${encodeURIComponent(msg)}`
-
-    window.open(url, '_blank')
+    openWhatsAppMessage(msg, prop.cleaner_phone)
   }
 
   const handleSaveCleaner = async (e: React.FormEvent) => {

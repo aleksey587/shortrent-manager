@@ -9,6 +9,7 @@ import {
 import { format, parseISO } from 'date-fns'
 import { el } from 'date-fns/locale'
 import { DEFAULT_GUEST_TEMPLATES, replaceTemplateVariables, MessageTemplate } from '@/lib/templates'
+import { openWhatsAppMessage } from '@/lib/utils'
 
 interface Property {
   id: string
@@ -133,7 +134,7 @@ export default function GuestMessagesPage() {
   }
 
   const handleWhatsApp = () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(renderedMessage)}`, '_blank')
+    openWhatsAppMessage(renderedMessage)
   }
 
   const handleEmail = () => {
