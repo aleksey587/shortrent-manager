@@ -14,6 +14,8 @@ import {
   Menu,
   Inbox,
   X,
+  MessageSquare,
+  SprayCan,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -26,6 +28,8 @@ const navItems = [
   { href: '/dashboard/properties', icon: Home, label: 'Ακίνητα', shortLabel: 'Ακίνητα' },
   { href: '/dashboard/calendar', icon: Calendar, label: 'Ημερολόγιο', shortLabel: 'Ημερολόγιο' },
   { href: '/dashboard/bookings', icon: BookOpen, label: 'Κρατήσεις', shortLabel: 'Κρατήσεις' },
+  { href: '/dashboard/cleaning', icon: SprayCan, label: 'Καθαρισμός & Tasks', shortLabel: 'Καθαρισμός' },
+  { href: '/dashboard/guest-messages', icon: MessageSquare, label: 'Μηνύματα Επισκεπτών', shortLabel: 'Μηνύματα' },
   { href: '/dashboard/aade', icon: FileText, label: 'Φορολογικό & ΑΑΔΕ', shortLabel: 'ΑΑΔΕ / Φόροι' },
   { href: '/dashboard/pricing', icon: Sparkles, label: 'Συνδρομές & Πλάνα', shortLabel: 'Pro' },
 ]
