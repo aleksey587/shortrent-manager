@@ -62,8 +62,9 @@ export default function CleaningHubPage() {
   const [cleanerForm, setCleanerForm] = useState({ name: '', phone: '' })
   const [savingCleaner, setSavingCleaner] = useState(false)
 
-  // Monthly dispatch modal state
+  // Monthly dispatch & cleaners modal states
   const [showMonthlyModal, setShowMonthlyModal] = useState(false)
+  const [showCleanersManagerModal, setShowCleanersManagerModal] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [monthlyPropertyId, setMonthlyPropertyId] = useState<string>('')
@@ -309,14 +310,24 @@ export default function CleaningHubPage() {
           </p>
         </div>
 
-        {/* Action Button: Monthly Dispatch */}
-        <button
-          onClick={() => setShowMonthlyModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shadow-md shadow-teal-600/20 shrink-0 self-start sm:self-auto"
-        >
-          <CalendarDays size={16} />
-          <span>📅 Αποστολή Μηνιαίου Προγράμματος</span>
-        </button>
+        {/* Action Buttons: Cleaners Manager & Monthly Dispatch */}
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <button
+            onClick={() => setShowCleanersManagerModal(true)}
+            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-2xs"
+          >
+            <User size={15} className="text-teal-600" />
+            <span>👤 Στοιχεία Καθαριστών</span>
+          </button>
+
+          <button
+            onClick={() => setShowMonthlyModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shadow-md shadow-teal-600/20"
+          >
+            <CalendarDays size={16} />
+            <span>📅 Αποστολή Μηνιαίου Προγράμματος</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -511,23 +522,36 @@ export default function CleaningHubPage() {
                     </div>
 
                     {/* Cleaner assigned */}
-                    <div className="text-[11px] text-gray-500 flex items-center gap-2 pt-0.5">
+                    <div className="text-[11px] text-gray-500 flex items-center flex-wrap gap-2 pt-0.5">
                       <span>Καθαριστής:</span>
                       {task.property.cleaner_name ? (
-                        <span className="font-semibold text-gray-800 flex items-center gap-1">
+                        <span className="font-semibold text-gray-800 flex items-center gap-1.5 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-200">
                           <User size={12} className="text-teal-600" />
                           <span>{task.property.cleaner_name}</span>
-                          {task.property.cleaner_phone && <span className="text-gray-400">({task.property.cleaner_phone})</span>}
+                          {task.property.cleaner_phone && <span className="text-gray-500 font-mono">({task.property.cleaner_phone})</span>}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCleanerProp(task.property)
+                              setCleanerForm({ name: task.property.cleaner_name || '', phone: task.property.cleaner_phone || '' })
+                            }}
+                            className="text-[10px] text-blue-600 hover:text-blue-800 font-bold ml-1.5 hover:underline inline-flex items-center gap-0.5"
+                          >
+                            <Edit3 size={10} />
+                            <span>Επεξεργασία</span>
+                          </button>
                         </span>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => {
                             setEditingCleanerProp(task.property)
                             setCleanerForm({ name: task.property.cleaner_name || '', phone: task.property.cleaner_phone || '' })
                           }}
-                          className="text-blue-600 font-bold hover:underline"
+                          className="text-xs text-blue-600 font-bold hover:underline inline-flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100"
                         >
-                          + Ορισμός Καθαριστή
+                          <Edit3 size={12} />
+                          <span>+ Ορισμός Καθαριστή</span>
                         </button>
                       )}
                     </div>
@@ -733,6 +757,70 @@ export default function CleaningHubPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cleaners Manager Modal */}
+      {showCleanersManagerModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-150 border border-gray-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">👤</span>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 text-base">Συνεργάτες Καθαρισμού</h3>
+                  <p className="text-xs text-gray-500">Στοιχεία επικοινωνίας ανά ακίνητο</p>
+                </div>
+              </div>
+              <button onClick={() => setShowCleanersManagerModal(false)} className="text-gray-400 hover:text-gray-600 font-bold">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {properties.map(prop => (
+                <div key={prop.id} className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: prop.color }} />
+                      <span className="font-bold text-gray-900 text-sm">{prop.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCleanersManagerModal(false)
+                        setEditingCleanerProp(prop)
+                        setCleanerForm({ name: prop.cleaner_name || '', phone: prop.cleaner_phone || '' })
+                      }}
+                      className="text-xs font-bold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-3 py-1 rounded-xl transition-colors inline-flex items-center gap-1"
+                    >
+                      <Edit3 size={12} />
+                      <span>{prop.cleaner_name ? 'Επεξεργασία' : '+ Ορισμός'}</span>
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-gray-600 space-y-0.5 pt-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Όνομα:</span>
+                      <strong className="text-gray-800">{prop.cleaner_name || '—'}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Τηλέφωνο / WhatsApp:</span>
+                      <strong className="text-gray-800 font-mono">{prop.cleaner_phone || '—'}</strong>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCleanersManagerModal(false)}
+              className="w-full bg-gray-900 hover:bg-black text-white font-bold py-2.5 rounded-2xl text-xs transition-colors"
+            >
+              Κλείσιμο
+            </button>
           </div>
         </div>
       )}
