@@ -194,12 +194,8 @@ export default function CleaningHubPage() {
         text += `\n`
       })
 
-      const totalFee = monthlyTasks.reduce((sum, t) => sum + t.cleaningFee, 0)
       text += `------------------------------------\n`
-      text += `💰 *Σύνολο Καθαρισμών:* ${monthlyTasks.length}\n`
-      if (totalFee > 0) {
-        text += `💵 *Συνολική Αμοιβή Μήνα:* €${totalFee}\n`
-      }
+      text += `🧹 *Σύνολο Καθαρισμών:* ${monthlyTasks.length}\n`
     }
 
     text += `\nΣας ευχαριστούμε για την εξαιρετική συνεργασία! 🌟`
@@ -252,10 +248,6 @@ export default function CleaningHubPage() {
       msg += `Άφιξη νέου επισκέπτη στις ${checkInTime}! Το σπίτι πρέπει να είναι έτοιμο πριν τις ${checkInTime}.\n`
     } else {
       msg += `ℹ️ Δεν υπάρχει άμεση άφιξη την ίδια μέρα.\n`
-    }
-
-    if (task.cleaningFee > 0) {
-      msg += `💰 Αμοιβή Καθαρισμού: €${task.cleaningFee}\n`
     }
 
     msg += `\nΠαρακαλώ ενημερώστε με μόλις ολοκληρωθεί. Ευχαριστώ πολύ!`
