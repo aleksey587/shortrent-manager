@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Sparkles, CheckCircle2, Clock, AlertTriangle, User, Home, Calendar,
-  Share2, Phone, MessageSquare, Check, Filter, Moon, ChevronRight, Edit3, Send
+  Share2, Phone, MessageSquare, Check, Filter, Moon, ChevronRight, Edit3, Send,
+  CalendarDays, Bell, Download, Copy
 } from 'lucide-react'
-import { format, parseISO, isToday, isTomorrow, isPast, isFuture, addDays, startOfDay, endOfDay, isSameDay } from 'date-fns'
+import { format, parseISO, isToday, isTomorrow, isPast, isFuture, addDays, startOfDay, endOfDay, isSameDay, getMonth, getYear } from 'date-fns'
 import { el } from 'date-fns/locale'
 
 interface Property {
@@ -43,6 +44,11 @@ interface CleaningTask {
   status: 'pending' | 'in_progress' | 'completed'
 }
 
+const MONTH_NAMES = [
+  'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
+  'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'
+]
+
 export default function CleaningHubPage() {
   const supabase = createClient()
   const [properties, setProperties] = useState<Property[]>([])
@@ -55,6 +61,13 @@ export default function CleaningHubPage() {
   const [cleanerForm, setCleanerForm] = useState({ name: '', phone: '' })
   const [savingCleaner, setSavingCleaner] = useState(false)
 
+  // Monthly dispatch modal state
+  const [showMonthlyModal, setShowMonthlyModal] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth())
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [monthlyPropertyId, setMonthlyPropertyId] = useState<string>('')
+  const [monthlyCopied, setMonthlyCopied] = useState(false)
+
   useEffect(() => {
     fetchData()
   }, [])
@@ -66,8 +79,12 @@ export default function CleaningHubPage() {
       supabase.from('bookings').select('*').order('check_out', { ascending: true }),
     ])
 
-    setProperties(props ?? [])
+    const fetchedProps = props ?? []
+    setProperties(fetchedProps)
     setBookings(books ?? [])
+    if (fetchedProps.length > 0) {
+      setMonthlyPropertyId(fetchedProps[0].id)
+    }
     setLoading(false)
   }
 
@@ -79,7 +96,6 @@ export default function CleaningHubPage() {
     const propMap = new Map<string, Property>()
     properties.forEach(p => propMap.set(p.id, p))
 
-    // For each booking, a cleaning task is triggered upon checkout
     bookings.forEach(b => {
       const prop = propMap.get(b.property_id)
       if (!prop) return
@@ -118,12 +134,10 @@ export default function CleaningHubPage() {
     const sevenDaysLater = addDays(today, 14)
 
     return cleaningTasks.filter(task => {
-      // Property filter
       if (selectedPropertyFilter !== 'all' && task.property.id !== selectedPropertyFilter) {
         return false
       }
 
-      // Period filter
       if (filterPeriod === 'today') {
         return isSameDay(task.date, today)
       }
@@ -138,6 +152,75 @@ export default function CleaningHubPage() {
     })
   }, [cleaningTasks, filterPeriod, selectedPropertyFilter])
 
+  // Tasks for the selected month in the monthly dispatch modal
+  const monthlyTasks = useMemo(() => {
+    return cleaningTasks.filter(task => {
+      const taskMonth = task.date.getMonth()
+      const taskYear = task.date.getFullYear()
+      const matchesDate = taskMonth === selectedMonth && taskYear === selectedYear
+      const matchesProp = monthlyPropertyId ? task.property.id === monthlyPropertyId : true
+      return matchesDate && matchesProp
+    })
+  }, [cleaningTasks, selectedMonth, selectedYear, monthlyPropertyId])
+
+  // Generate monthly dispatch message text
+  const monthlyMessageText = useMemo(() => {
+    const prop = properties.find(p => p.id === monthlyPropertyId) || properties[0]
+    const cleanerName = prop?.cleaner_name || 'Συνεργάτη'
+    const monthName = MONTH_NAMES[selectedMonth]
+
+    let text = `📅 ΠΡΟΓΡΑΜΜΑ ΚΑΘΑΡΙΣΜΩΝ — ${monthName.toUpperCase()} ${selectedYear}\n`
+    text += `🏠 Ακίνητο: *${prop?.name || 'Ακίνητο'}*\n`
+    if (prop?.address) text += `📍 Διεύθυνση: ${prop.address}\n`
+    text += `👤 Καθαριστής: ${cleanerName}\n`
+    text += `------------------------------------\n\n`
+
+    if (monthlyTasks.length === 0) {
+      text += `Δεν υπάρχουν προγραμματισμένοι καθαρισμοί για αυτόν τον μήνα.\n`
+    } else {
+      text += `📋 Ημερομηνίες Καθαρισμού (${monthlyTasks.length} σύνολο):\n\n`
+      monthlyTasks.forEach((t, index) => {
+        const dateStr = format(t.date, 'EEEE dd/MM', { locale: el })
+        const outTime = t.property.check_out_time || '11:00'
+        const inTime = t.property.check_in_time || '15:00'
+
+        text += `${index + 1}. *${dateStr}*\n`
+        text += `   • Check-out: ${outTime}\n`
+        if (t.isTurnaround) {
+          text += `   • ⚠️ *SAME-DAY TURNAROUND* -> Επόμενο Check-in: ${inTime}\n`
+        } else {
+          text += `   • Επόμενο Check-in: Άλλη μέρα\n`
+        }
+        text += `\n`
+      })
+
+      const totalFee = monthlyTasks.reduce((sum, t) => sum + t.cleaningFee, 0)
+      text += `------------------------------------\n`
+      text += `💰 *Σύνολο Καθαρισμών:* ${monthlyTasks.length}\n`
+      if (totalFee > 0) {
+        text += `💵 *Συνολική Αμοιβή Μήνα:* €${totalFee}\n`
+      }
+    }
+
+    text += `\nΣας ευχαριστούμε για την εξαιρετική συνεργασία! 🌟`
+    return text
+  }, [monthlyTasks, selectedMonth, selectedYear, monthlyPropertyId, properties])
+
+  const sendMonthlyWhatsApp = () => {
+    const prop = properties.find(p => p.id === monthlyPropertyId)
+    const phoneClean = prop?.cleaner_phone ? prop.cleaner_phone.replace(/\D/g, '') : ''
+    const url = phoneClean
+      ? `https://wa.me/${phoneClean}?text=${encodeURIComponent(monthlyMessageText)}`
+      : `https://wa.me/?text=${encodeURIComponent(monthlyMessageText)}`
+    window.open(url, '_blank')
+  }
+
+  const copyMonthlyMessage = () => {
+    navigator.clipboard.writeText(monthlyMessageText)
+    setMonthlyCopied(true)
+    setTimeout(() => setMonthlyCopied(false), 2000)
+  }
+
   const toggleTaskStatus = (taskId: string, current: 'pending' | 'in_progress' | 'completed') => {
     const next: Record<'pending' | 'in_progress' | 'completed', 'pending' | 'in_progress' | 'completed'> = {
       pending: 'in_progress',
@@ -148,14 +231,17 @@ export default function CleaningHubPage() {
     setTaskStatusMap(prev => ({ ...prev, [taskId]: newStatus }))
   }
 
-  const dispatchToCleaner = (task: CleaningTask) => {
+  const dispatchToCleaner = (task: CleaningTask, isReminder = false) => {
     const prop = task.property
     const cleanerName = prop.cleaner_name ? `${prop.cleaner_name}` : 'Συνεργάτη'
     const dateFormatted = format(task.date, 'EEEE d MMMM', { locale: el })
     const checkOutTime = prop.check_out_time || '11:00'
     const checkInTime = prop.check_in_time || '15:00'
 
-    let msg = `Καλημέρα ${cleanerName}! 🧹\n\n`
+    let msg = isReminder
+      ? `🔔 *ΠΡΩΙΝΗ ΥΠΕΝΘΥΜΙΣΗ ΚΑΘΑΡΙΣΜΟΥ* 🔔\n\nΚαλημέρα ${cleanerName}!\n`
+      : `Καλημέρα ${cleanerName}! 🧹\n\n`
+
     msg += `Έχουμε προγραμματισμένο καθαρισμό για το ακίνητο *${prop.name}*:\n`
     if (prop.address) msg += `📍 Διεύθυνση: ${prop.address}\n`
     msg += `📅 Ημερομηνία: ${dateFormatted}\n`
@@ -235,9 +321,18 @@ export default function CleaningHubPage() {
             Διαχείριση & Πρόγραμμα Καθαριστριών
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Αυτόματος προγραμματισμός καθαρισμών μετά από κάθε check-out, ειδοποιήσεις Same-Day Turnaround και 1-Click WhatsApp Dispatch.
+            Αυτόματος προγραμματισμός καθαρισμών, αποστολή μηνιαίου προγράμματος και ημερήσιες υπενθυμίσεις WhatsApp.
           </p>
         </div>
+
+        {/* Action Button: Monthly Dispatch */}
+        <button
+          onClick={() => setShowMonthlyModal(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shadow-md shadow-teal-600/20 shrink-0 self-start sm:self-auto"
+        >
+          <CalendarDays size={16} />
+          <span>📅 Αποστολή Μηνιαίου Προγράμματος</span>
+        </button>
       </div>
 
       {/* KPI Cards */}
@@ -486,21 +581,124 @@ export default function CleaningHubPage() {
                     )}
                   </button>
 
-                  {/* 1-Click WhatsApp Dispatch to Cleaner */}
-                  <button
-                    onClick={() => dispatchToCleaner(task)}
-                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-sm shadow-emerald-600/20"
-                    title="Αποστολή εντολής καθαρισμού μέσω WhatsApp"
-                  >
-                    <Send size={13} />
-                    <span>WhatsApp</span>
-                  </button>
+                  {/* 1-Click WhatsApp Reminder Button */}
+                  {isTaskToday ? (
+                    <button
+                      onClick={() => dispatchToCleaner(task, true)}
+                      className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-sm shadow-amber-500/20"
+                      title="Αποστολή πρωινής υπενθύμισης WhatsApp"
+                    >
+                      <Bell size={13} />
+                      <span>🔔 Υπενθύμιση Σήμερα</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => dispatchToCleaner(task, false)}
+                      className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-sm shadow-emerald-600/20"
+                      title="Αποστολή εντολής καθαρισμού μέσω WhatsApp"
+                    >
+                      <Send size={13} />
+                      <span>WhatsApp</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )
           })
         )}
       </div>
+
+      {/* Monthly Dispatch Modal */}
+      {showMonthlyModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-150 border border-gray-100 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">📅</span>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 text-base">Αποστολή Μηνιαίου Προγράμματος</h3>
+                  <p className="text-xs text-gray-500">Συγκεντρωτική λίστα όλων των καθαρισμών του μήνα</p>
+                </div>
+              </div>
+              <button onClick={() => setShowMonthlyModal(false)} className="text-gray-400 hover:text-gray-600 font-bold">
+                ✕
+              </button>
+            </div>
+
+            {/* Selector controls */}
+            <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-200/80">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Ακίνητο</label>
+                <select
+                  value={monthlyPropertyId}
+                  onChange={e => setMonthlyPropertyId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-gray-900 bg-white"
+                >
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Μήνας</label>
+                <select
+                  value={selectedMonth}
+                  onChange={e => setSelectedMonth(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-gray-900 bg-white"
+                >
+                  {MONTH_NAMES.map((m, idx) => (
+                    <option key={idx} value={idx}>{m} {selectedYear}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Generated Message Preview */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-gray-700">Προεπισκόπηση Μηνύματος ({monthlyTasks.length} καθαρισμοί):</span>
+                <button
+                  type="button"
+                  onClick={copyMonthlyMessage}
+                  className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1"
+                >
+                  {monthlyCopied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                  <span>{monthlyCopied ? 'Αντιγράφηκε!' : 'Αντιγραφή'}</span>
+                </button>
+              </div>
+
+              <textarea
+                readOnly
+                rows={9}
+                value={monthlyMessageText}
+                className="w-full font-sans text-xs text-gray-900 bg-gray-50 border border-gray-200 rounded-2xl p-3.5 leading-relaxed focus:outline-none"
+              />
+            </div>
+
+            {/* Action buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={copyMonthlyMessage}
+                className="flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-black text-white font-bold py-3 px-4 rounded-2xl text-xs transition-colors shadow-sm"
+              >
+                {monthlyCopied ? <Check size={15} /> : <Copy size={15} />}
+                <span>{monthlyCopied ? 'Αντιγράφηκε!' : 'Αντιγραφή Κειμένου'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={sendMonthlyWhatsApp}
+                className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-2xl text-xs transition-colors shadow-sm shadow-emerald-600/20"
+              >
+                <Send size={15} />
+                <span>Αποστολή WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Set Cleaner Modal */}
       {editingCleanerProp && (

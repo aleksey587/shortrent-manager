@@ -16,6 +16,7 @@ import {
   X,
   MessageSquare,
   SprayCan,
+  Smartphone,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/dashboard/bookings', icon: BookOpen, label: 'Κρατήσεις', shortLabel: 'Κρατήσεις' },
   { href: '/dashboard/cleaning', icon: SprayCan, label: 'Καθαρισμός & Tasks', shortLabel: 'Καθαρισμός' },
   { href: '/dashboard/guest-messages', icon: MessageSquare, label: 'Μηνύματα Επισκεπτών', shortLabel: 'Μηνύματα' },
+  { href: '/dashboard/guidebook', icon: Smartphone, label: 'Ψηφιακός Οδηγός', shortLabel: 'Οδηγός' },
   { href: '/dashboard/aade', icon: FileText, label: 'Φορολογικό & ΑΑΔΕ', shortLabel: 'ΑΑΔΕ / Φόροι' },
   { href: '/dashboard/pricing', icon: Sparkles, label: 'Συνδρομές & Πλάνα', shortLabel: 'Pro' },
 ]
