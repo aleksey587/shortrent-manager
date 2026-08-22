@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   MessageSquare, Copy, Check, Send, Sparkles, User, Home, Calendar,
-  Globe, Key, Wifi, Clock, ShieldCheck, Share2, AlertCircle, Edit3, ChevronRight
+  Globe, Key, Wifi, Clock, ShieldCheck, Share2, AlertCircle, Edit3, ChevronRight,
+  Plus, Trash2, RotateCcw, Lock
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { el } from 'date-fns/locale'
 import { DEFAULT_GUEST_TEMPLATES, replaceTemplateVariables, MessageTemplate } from '@/lib/templates'
 import { openWhatsAppMessage } from '@/lib/utils'
+import { isProUser } from '@/lib/permissions'
+import ProFeatureModal from '@/components/ui/ProFeatureModal'
 
 interface Property {
   id: string
@@ -36,15 +39,39 @@ interface Booking {
 
 export default function GuestMessagesPage() {
   const supabase = createClient()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [properties, setProperties] = useState<Property[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [selectedBookingId, setSelectedBookingId] = useState<string>('')
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('checkin')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('gr-checkin')
   const [language, setLanguage] = useState<'el' | 'en'>('el')
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [customBody, setCustomBody] = useState<string>('')
+
+  // Custom Templates state
+  const [customTemplates, setCustomTemplates] = useState<MessageTemplate[]>([])
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showProModal, setShowProModal] = useState(false)
+  const [templateForm, setTemplateForm] = useState<{
+    id?: string
+    title: string
+    category: 'confirmation' | 'checkin' | 'midstay' | 'checkout' | 'review' | 'custom'
+    language: 'el' | 'en'
+    icon: string
+    subject: string
+    body: string
+  }>({
+    title: '',
+    category: 'custom',
+    language: 'el',
+    icon: '💬',
+    subject: '',
+    body: '',
+  })
+
+  // Wi-Fi quick editor state
   const [editingAmenities, setEditingAmenities] = useState(false)
   const [amenityForm, setAmenityForm] = useState({
     wifi_name: '',
@@ -62,7 +89,8 @@ export default function GuestMessagesPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: props }, { data: books }] = await Promise.all([
+    const [{ data: { user } }, { data: props }, { data: books }] = await Promise.all([
+      supabase.auth.getUser(),
       supabase.from('properties').select('*').order('created_at'),
       supabase
         .from('bookings')
@@ -70,6 +98,8 @@ export default function GuestMessagesPage() {
         .order('check_in', { ascending: false })
         .limit(100),
     ])
+
+    if (user?.email) setUserEmail(user.email)
 
     const fetchedProps = props ?? []
     setProperties(fetchedProps)
@@ -87,8 +117,20 @@ export default function GuestMessagesPage() {
       if (relatedProp) loadAmenityForm(relatedProp)
     }
 
+    // Load saved custom templates from localStorage
+    try {
+      const saved = localStorage.getItem('greekhost_custom_templates')
+      if (saved) {
+        setCustomTemplates(JSON.parse(saved))
+      }
+    } catch {
+      // ignore
+    }
+
     setLoading(false)
   }
+
+  const isPro = isProUser(userEmail)
 
   function loadAmenityForm(prop: Property) {
     setAmenityForm({
@@ -104,10 +146,14 @@ export default function GuestMessagesPage() {
   const activeProperty = properties.find(p => p.id === selectedPropertyId) || properties[0]
   const activeBooking = bookings.find(b => b.id === selectedBookingId)
 
-  // Find matching template
-  const activeTemplate = DEFAULT_GUEST_TEMPLATES.find(
-    t => t.category === selectedCategory && t.language === language
-  ) || DEFAULT_GUEST_TEMPLATES[0]
+  // Combined templates (default + custom)
+  const allTemplates = [...DEFAULT_GUEST_TEMPLATES, ...customTemplates]
+
+  // Filter templates by current language
+  const availableTemplates = allTemplates.filter(t => t.language === language)
+
+  // Active template
+  const activeTemplate = allTemplates.find(t => t.id === selectedTemplateId) || availableTemplates[0] || DEFAULT_GUEST_TEMPLATES[0]
 
   // Rendered body with smart variables
   const renderedMessage = activeBooking && activeProperty
@@ -164,20 +210,110 @@ export default function GuestMessagesPage() {
 
     setSavingAmenities(false)
     if (error) {
-      alert('⚠️ Σημείωση: Αν οι στήλες Wi-Fi δεν έχουν δημιουργηθεί ακόμα στη βάση, εκτελέστε το Migration 006 στο Supabase SQL Editor.')
+      alert('⚠️ Σημείωση: Αν οι στήλες Wi-Fi δεν έχουν δημιουργηθεί στη βάση, εκτελέστε το Migration 006 στο Supabase SQL Editor.')
     } else {
       setProperties(prev => prev.map(p => p.id === activeProperty.id ? { ...p, ...amenityForm } : p))
       setEditingAmenities(false)
     }
   }
 
-  const categories = [
-    { key: 'confirmation', label: '1. Επιβεβαίωση', icon: '🎉' },
-    { key: 'checkin', label: '2. Check-in & Wi-Fi', icon: '🔑' },
-    { key: 'midstay', label: '3. Έλεγχος Διαμονής', icon: '✨' },
-    { key: 'checkout', label: '4. Check-out', icon: '🧳' },
-    { key: 'review', label: '5. Αίτημα Κριτικής 5★', icon: '⭐' },
-  ]
+  // Open Template Editor (Pro gated)
+  const openNewTemplate = () => {
+    if (!isPro) {
+      setShowProModal(true)
+      return
+    }
+    setTemplateForm({
+      title: '',
+      category: 'custom',
+      language,
+      icon: '💬',
+      subject: '',
+      body: '',
+    })
+    setShowTemplateModal(true)
+  }
+
+  const openEditTemplate = (tmpl: MessageTemplate) => {
+    if (!isPro) {
+      setShowProModal(true)
+      return
+    }
+    setTemplateForm({
+      id: tmpl.id,
+      title: tmpl.title,
+      category: tmpl.category,
+      language: tmpl.language,
+      icon: tmpl.icon,
+      subject: tmpl.subject,
+      body: tmpl.body,
+    })
+    setShowTemplateModal(true)
+  }
+
+  const saveCustomTemplate = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!templateForm.title.trim() || !templateForm.body.trim()) {
+      alert('Παρακαλούμε συμπληρώστε τίτλο και κείμενο μηνύματος.')
+      return
+    }
+
+    let updated: MessageTemplate[]
+    if (templateForm.id) {
+      // update existing
+      updated = customTemplates.map(t =>
+        t.id === templateForm.id
+          ? { ...t, ...templateForm, id: templateForm.id }
+          : t
+      )
+      // or if it was a default template being edited, save as custom override
+      if (!customTemplates.some(t => t.id === templateForm.id)) {
+        const newEntry: MessageTemplate = {
+          ...templateForm,
+          id: `custom-${Date.now()}`,
+        }
+        updated = [...customTemplates, newEntry]
+        setSelectedTemplateId(newEntry.id)
+      }
+    } else {
+      // create new
+      const newEntry: MessageTemplate = {
+        ...templateForm,
+        id: `custom-${Date.now()}`,
+      }
+      updated = [...customTemplates, newEntry]
+      setSelectedTemplateId(newEntry.id)
+    }
+
+    setCustomTemplates(updated)
+    try {
+      localStorage.setItem('greekhost_custom_templates', JSON.stringify(updated))
+    } catch {
+      // ignore
+    }
+    setShowTemplateModal(false)
+    setCustomBody('')
+  }
+
+  const deleteCustomTemplate = (id: string) => {
+    if (!confirm('Διαγραφή αυτού του προτύπου;')) return
+    const updated = customTemplates.filter(t => t.id !== id)
+    setCustomTemplates(updated)
+    try {
+      localStorage.setItem('greekhost_custom_templates', JSON.stringify(updated))
+    } catch {
+      // ignore
+    }
+    setSelectedTemplateId(availableTemplates[0]?.id || 'gr-checkin')
+    setCustomBody('')
+  }
+
+  const insertVariable = (variableTag: string) => {
+    setTemplateForm(prev => ({
+      ...prev,
+      body: prev.body + ' ' + variableTag,
+    }))
+  }
 
   if (loading) {
     return (
@@ -203,14 +339,18 @@ export default function GuestMessagesPage() {
             Αυτόματα & Έξυπνα Μηνύματα Επισκεπτών
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Επαγγελματικά μηνύματα για κάθε στάδιο της κράτησης με 1-click αποστολή σε WhatsApp, Airbnb & Booking.
+            Έτοιμα πρότυπα και δυνατότητα δημιουργίας δικών σας μηνυμάτων με 1-click αποστολή σε WhatsApp, Airbnb & Booking.
           </p>
         </div>
 
         {/* Language Toggle */}
         <div className="flex items-center gap-1.5 bg-gray-100 p-1.5 rounded-2xl shrink-0 self-start sm:self-auto border border-gray-200">
           <button
-            onClick={() => { setLanguage('el'); setCustomBody('') }}
+            onClick={() => {
+              setLanguage('el')
+              setCustomBody('')
+              setSelectedTemplateId(allTemplates.find(t => t.language === 'el')?.id || 'gr-checkin')
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
               language === 'el' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
             }`}
@@ -219,7 +359,11 @@ export default function GuestMessagesPage() {
             <span>Ελληνικά</span>
           </button>
           <button
-            onClick={() => { setLanguage('en'); setCustomBody('') }}
+            onClick={() => {
+              setLanguage('en')
+              setCustomBody('')
+              setSelectedTemplateId(allTemplates.find(t => t.language === 'en')?.id || 'en-checkin')
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
               language === 'en' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
             }`}
@@ -288,31 +432,79 @@ export default function GuestMessagesPage() {
             )}
           </div>
 
-          {/* Template Stage Selector */}
+          {/* Template Stage Selector with Custom Templates & Pro Gating */}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 space-y-3">
-            <label className="text-xs font-bold text-gray-900 uppercase tracking-wider block">
-              Στάδιο Επικοινωνίας (Templates)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-900 uppercase tracking-wider block">
+                Στάδιο Επικοινωνίας (Templates)
+              </label>
+
+              {/* Add Custom Template Button (Pro) */}
+              <button
+                type="button"
+                onClick={openNewTemplate}
+                className="text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-xl transition-all flex items-center gap-1 shadow-2xs"
+                title={isPro ? 'Προσθήκη δικού σας προτύπου' : 'Pro λειτουργία'}
+              >
+                {!isPro && <Lock size={11} className="text-purple-600" />}
+                <Plus size={12} />
+                <span>Νέο Πρότυπο</span>
+              </button>
+            </div>
 
             <div className="space-y-1.5">
-              {categories.map(cat => {
-                const isSelected = selectedCategory === cat.key
+              {availableTemplates.map(tmpl => {
+                const isSelected = selectedTemplateId === tmpl.id
+                const isCustom = tmpl.id.startsWith('custom-')
+
                 return (
-                  <button
-                    key={cat.key}
-                    onClick={() => { setSelectedCategory(cat.key); setCustomBody('') }}
-                    className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-base">{cat.icon}</span>
-                      <span>{cat.label}</span>
+                  <div key={tmpl.id} className="relative group flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTemplateId(tmpl.id)
+                        setCustomBody('')
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-between pr-14 ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="text-base shrink-0">{tmpl.icon}</span>
+                        <span className="truncate">{tmpl.title}</span>
+                      </div>
+                      <ChevronRight size={14} className={isSelected ? 'text-white' : 'text-gray-400'} />
+                    </button>
+
+                    {/* Action buttons (Edit & Delete for custom, Edit for default if Pro) */}
+                    <div className="absolute right-2 flex items-center gap-1 z-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(tmpl)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          isSelected ? 'text-white/80 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title={isPro ? 'Επεξεργασία προτύπου' : 'Απαιτείται Pro'}
+                      >
+                        <Edit3 size={12} />
+                      </button>
+
+                      {isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => deleteCustomTemplate(tmpl.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            isSelected ? 'text-white/80 hover:text-red-200 hover:bg-white/20' : 'text-gray-400 hover:text-red-600 hover:bg-gray-200'
+                          }`}
+                          title="Διαγραφή προτύπου"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
-                    <ChevronRight size={14} className={isSelected ? 'text-white' : 'text-gray-400'} />
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -437,7 +629,18 @@ export default function GuestMessagesPage() {
               <div className="flex items-center gap-2.5">
                 <span className="text-2xl">{activeTemplate.icon}</span>
                 <div>
-                  <h3 className="font-extrabold text-gray-900 text-base">{activeTemplate.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-gray-900 text-base">{activeTemplate.title}</h3>
+                    {isPro && (
+                      <button
+                        onClick={() => openEditTemplate(activeTemplate)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-0.5"
+                      >
+                        <Edit3 size={11} />
+                        <span>Επεξεργασία</span>
+                      </button>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400">
                     Έτοιμο προς αποστολή για {activeBooking?.guest_name || 'τον επισκέπτη'}
                   </p>
@@ -510,6 +713,128 @@ export default function GuestMessagesPage() {
           </div>
         </div>
       </div>
+
+      {/* Pro Upgrade Modal */}
+      <ProFeatureModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        featureTitle="Δημιουργία Προσαρμοσμένων Προτύπων (Pro)"
+        featureDescription="Αναβαθμίστε στο πακέτο Pro για να δημιουργήσετε απεριόριστα δικά σας πρότυπα μηνυμάτων, αυτοματισμούς καθαριστριών και multi-calendar!"
+      />
+
+      {/* Custom Template Editor Modal (Pro Member Only) */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 border border-gray-100 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{templateForm.icon}</span>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 text-base">
+                    {templateForm.id ? 'Επεξεργασία Προτύπου Μηνύματος' : 'Δημιουργία Νέου Προτύπου'}
+                  </h3>
+                  <p className="text-xs text-gray-500">Προσαρμόστε τίτλο, κείμενο και μεταβλητές</p>
+                </div>
+              </div>
+              <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-gray-600 font-bold">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={saveCustomTemplate} className="space-y-4 text-xs">
+              <div className="grid grid-cols-4 gap-3">
+                <div className="col-span-3">
+                  <label className="font-bold text-gray-700 block mb-1">Τίτλος Προτύπου</label>
+                  <input
+                    value={templateForm.title}
+                    onChange={e => setTemplateForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="π.χ. Οδηγίες Στάθμευσης & Parking"
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 font-medium"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-gray-700 block mb-1">Εικονίδιο</label>
+                  <input
+                    value={templateForm.icon}
+                    onChange={e => setTemplateForm(f => ({ ...f, icon: e.target.value }))}
+                    placeholder="🚗"
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-center text-base focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-gray-700 block mb-1">Θέμα Email (Προαιρετικό)</label>
+                <input
+                  value={templateForm.subject}
+                  onChange={e => setTemplateForm(f => ({ ...f, subject: e.target.value }))}
+                  placeholder="π.χ. Σημαντικές Πληροφορίες — {{property_name}}"
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Smart Variable Insertion Chips */}
+              <div>
+                <label className="font-bold text-gray-600 uppercase text-[10px] block mb-1.5">
+                  Κάντε κλικ για εισαγωγή μεταβλητής:
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: 'Όνομα Επισκέπτη', tag: '{{guest_name}}' },
+                    { label: 'Όνομα Ακινήτου', tag: '{{property_name}}' },
+                    { label: 'Check-in', tag: '{{check_in}}' },
+                    { label: 'Check-out', tag: '{{check_out}}' },
+                    { label: 'Ώρα Check-in', tag: '{{check_in_time}}' },
+                    { label: 'Ώρα Check-out', tag: '{{check_out_time}}' },
+                    { label: 'Wi-Fi Name', tag: '{{wifi_name}}' },
+                    { label: 'Wi-Fi Pass', tag: '{{wifi_password}}' },
+                    { label: 'Lockbox PIN', tag: '{{lockbox_code}}' },
+                    { label: 'Οδηγίες', tag: '{{directions}}' },
+                  ].map(v => (
+                    <button
+                      key={v.tag}
+                      type="button"
+                      onClick={() => insertVariable(v.tag)}
+                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-colors"
+                    >
+                      + {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-gray-700 block mb-1">Κείμενο Μηνύματος (Template Body)</label>
+                <textarea
+                  rows={8}
+                  value={templateForm.body}
+                  onChange={e => setTemplateForm(f => ({ ...f, body: e.target.value }))}
+                  placeholder="Γράψτε το μήνυμά σας χρησιμοποιώντας τις παραπάνω μεταβλητές..."
+                  className="w-full border border-gray-300 rounded-xl p-3 text-xs leading-relaxed focus:ring-2 focus:ring-blue-500 font-sans"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateModal(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold transition-colors"
+                >
+                  Ακύρωση
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold transition-colors shadow-sm"
+                >
+                  Αποθήκευση Προτύπου
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

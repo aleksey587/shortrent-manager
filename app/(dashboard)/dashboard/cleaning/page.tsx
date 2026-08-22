@@ -10,6 +10,8 @@ import {
 import { format, parseISO, isToday, isTomorrow, isPast, isFuture, addDays, startOfDay, endOfDay, isSameDay, getMonth, getYear } from 'date-fns'
 import { el } from 'date-fns/locale'
 import { openWhatsAppMessage } from '@/lib/utils'
+import { isProUser } from '@/lib/permissions'
+import ProFeatureModal from '@/components/ui/ProFeatureModal'
 
 interface Property {
   id: string
@@ -52,6 +54,7 @@ const MONTH_NAMES = [
 
 export default function CleaningHubPage() {
   const supabase = createClient()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [properties, setProperties] = useState<Property[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [taskStatusMap, setTaskStatusMap] = useState<Record<string, 'pending' | 'in_progress' | 'completed'>>({})
@@ -65,6 +68,7 @@ export default function CleaningHubPage() {
   // Monthly dispatch & cleaners modal states
   const [showMonthlyModal, setShowMonthlyModal] = useState(false)
   const [showCleanersManagerModal, setShowCleanersManagerModal] = useState(false)
+  const [showProModal, setShowProModal] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [monthlyPropertyId, setMonthlyPropertyId] = useState<string>('')
@@ -76,11 +80,13 @@ export default function CleaningHubPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: props }, { data: books }] = await Promise.all([
+    const [{ data: { user } }, { data: props }, { data: books }] = await Promise.all([
+      supabase.auth.getUser(),
       supabase.from('properties').select('*').order('created_at'),
       supabase.from('bookings').select('*').order('check_out', { ascending: true }),
     ])
 
+    if (user?.email) setUserEmail(user.email)
     const fetchedProps = props ?? []
     setProperties(fetchedProps)
     setBookings(books ?? [])
@@ -321,9 +327,16 @@ export default function CleaningHubPage() {
           </button>
 
           <button
-            onClick={() => setShowMonthlyModal(true)}
+            onClick={() => {
+              if (!isProUser(userEmail)) {
+                setShowProModal(true)
+              } else {
+                setShowMonthlyModal(true)
+              }
+            }}
             className="flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shadow-md shadow-teal-600/20"
           >
+            {!isProUser(userEmail) && <span className="text-[10px]">⭐</span>}
             <CalendarDays size={16} />
             <span>📅 Αποστολή Μηνιαίου Προγράμματος</span>
           </button>
@@ -824,6 +837,14 @@ export default function CleaningHubPage() {
           </div>
         </div>
       )}
+
+      {/* Pro Upgrade Modal */}
+      <ProFeatureModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        featureTitle="Μηνιαίο Πρόγραμμα Καθαρισμών (Pro)"
+        featureDescription="Αναβαθμίστε στο πακέτο Pro για να στέλνετε συγκεντρωτικά ολόκληρο το μηνιαίο πρόγραμμα καθαρισμών στην καθαρίστρια με 1 κλικ στο WhatsApp!"
+      />
     </div>
   )
 }

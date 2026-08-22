@@ -12,6 +12,8 @@ import {
 } from 'date-fns'
 import { el } from 'date-fns/locale'
 import Link from 'next/link'
+import { isProUser } from '@/lib/permissions'
+import ProFeatureModal from '@/components/ui/ProFeatureModal'
 
 interface Booking {
   id: string
@@ -40,11 +42,13 @@ const PLATFORM_INFO: Record<string, { label: string; bg: string; text: string; d
 
 export default function CalendarPage() {
   const supabase = createClient()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [properties, setProperties] = useState<Property[]>([])
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set())
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid')
+  const [showProModal, setShowProModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -53,10 +57,12 @@ export default function CalendarPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: props }, { data: books }] = await Promise.all([
+    const [{ data: { user } }, { data: props }, { data: books }] = await Promise.all([
+      supabase.auth.getUser(),
       supabase.from('properties').select('id, name, color').order('created_at'),
       supabase.from('bookings').select('id, property_id, guest_name, check_in, check_out, platform, total_price, nights'),
     ])
+    if (user?.email) setUserEmail(user.email)
     const fetchedProps = props ?? []
     setProperties(fetchedProps)
     setSelectedProperties(new Set(fetchedProps.map(p => p.id)))
@@ -154,11 +160,18 @@ export default function CalendarPage() {
               <span>Πλέγμα Μήνα</span>
             </button>
             <button
-              onClick={() => setViewMode('timeline')}
+              onClick={() => {
+                if (!isProUser(userEmail)) {
+                  setShowProModal(true)
+                } else {
+                  setViewMode('timeline')
+                }
+              }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === 'timeline' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
+              {!isProUser(userEmail) && <span className="text-[10px]">⭐</span>}
               <AlignLeft size={14} />
               <span>Multi Timeline</span>
             </button>
@@ -493,6 +506,14 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+
+      {/* Pro Upgrade Modal */}
+      <ProFeatureModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        featureTitle="Multi-Property Timeline Ημερολόγιο (Pro)"
+        featureDescription="Αναβαθμίστε στο πακέτο Pro για να παρακολουθείτε όλα τα ακίνητά σας ταυτόχρονα σε οριζόντιο Timeline, με ένδειξη πλατφορμών και Turnaround flags!"
+      />
     </div>
   )
 }
