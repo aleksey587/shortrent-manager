@@ -17,6 +17,7 @@ import {
   MessageSquare,
   SprayCan,
   Smartphone,
+  Globe,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -24,18 +25,7 @@ import SupportModal from '@/components/SupportModal'
 import InstallAppModal from '@/components/InstallAppModal'
 import WhatsNewModal from '@/components/WhatsNewModal'
 import { isSuperAdmin, getUserSubscription, isProUser, getUserTier } from '@/lib/permissions'
-
-const navItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Επισκόπηση', shortLabel: 'Αρχική' },
-  { href: '/dashboard/properties', icon: Home, label: 'Ακίνητα', shortLabel: 'Ακίνητα' },
-  { href: '/dashboard/calendar', icon: Calendar, label: 'Ημερολόγιο', shortLabel: 'Ημερολόγιο' },
-  { href: '/dashboard/bookings', icon: BookOpen, label: 'Κρατήσεις', shortLabel: 'Κρατήσεις' },
-  { href: '/dashboard/cleaning', icon: SprayCan, label: 'Καθαρισμός & Tasks', shortLabel: 'Καθαρισμός' },
-  { href: '/dashboard/guest-messages', icon: MessageSquare, label: 'Μηνύματα Επισκεπτών', shortLabel: 'Μηνύματα' },
-  { href: '/dashboard/guidebook', icon: Smartphone, label: 'Ψηφιακός Οδηγός', shortLabel: 'Οδηγός' },
-  { href: '/dashboard/aade', icon: FileText, label: 'Φορολογικό & ΑΑΔΕ', shortLabel: 'ΑΑΔΕ / Φόροι' },
-  { href: '/dashboard/pricing', icon: Sparkles, label: 'Συνδρομές & Πλάνα', shortLabel: 'Pro' },
-]
+import { useLanguage } from '@/lib/languageContext'
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -43,6 +33,19 @@ export default function Sidebar() {
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const { language, setLanguage, t } = useLanguage()
+
+  const navItems = [
+    { href: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard', 'Επισκόπηση'), shortLabel: language === 'en' ? 'Overview' : 'Αρχική' },
+    { href: '/dashboard/properties', icon: Home, label: t('nav.properties', 'Ακίνητα'), shortLabel: language === 'en' ? 'Props' : 'Ακίνητα' },
+    { href: '/dashboard/calendar', icon: Calendar, label: t('nav.calendar', 'Ημερολόγιο'), shortLabel: language === 'en' ? 'Calendar' : 'Ημερολόγιο' },
+    { href: '/dashboard/bookings', icon: BookOpen, label: t('nav.bookings', 'Κρατήσεις'), shortLabel: language === 'en' ? 'Bookings' : 'Κρατήσεις' },
+    { href: '/dashboard/cleaning', icon: SprayCan, label: t('nav.cleaning', 'Καθαρισμός & Tasks'), shortLabel: language === 'en' ? 'Cleaning' : 'Καθαρισμός' },
+    { href: '/dashboard/guest-messages', icon: MessageSquare, label: t('nav.messages', 'Μηνύματα Επισκεπτών'), shortLabel: language === 'en' ? 'Messages' : 'Μηνύματα' },
+    { href: '/dashboard/guidebook', icon: Smartphone, label: t('nav.guidebook', 'Ψηφιακός Οδηγός'), shortLabel: language === 'en' ? 'Guide' : 'Οδηγός' },
+    { href: '/dashboard/aade', icon: FileText, label: t('nav.aade', 'Φορολογικό & ΑΑΔΕ'), shortLabel: language === 'en' ? 'Taxes' : 'ΑΑΔΕ' },
+    { href: '/dashboard/pricing', icon: Sparkles, label: t('nav.pricing', 'Συνδρομές & Πλάνα'), shortLabel: 'Pro' },
+  ]
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -63,25 +66,49 @@ export default function Sidebar() {
 
   const NavLinks = () => (
     <>
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100">
-        <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-lg shadow">
-          🏠
-        </div>
-        <div>
-          <div className="font-bold text-gray-900 text-base leading-tight">GreekHost</div>
-          <div className="text-[11px] font-medium flex items-center gap-1">
-            {isSuper ? (
-              <span className="text-amber-600 font-bold flex items-center gap-0.5">
-                👑 Super Admin
-              </span>
-            ) : tier === 'pro' ? (
-              <span className="text-purple-600 font-bold flex items-center gap-0.5">
-                ⭐ Pro Member
-              </span>
-            ) : (
-              <span className="text-blue-600">Bnb & Tax Manager</span>
-            )}
+      <div className="flex items-center justify-between px-4 py-5 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-lg shadow">
+            🏠
           </div>
+          <div>
+            <div className="font-bold text-gray-900 text-base leading-tight">GreekHost</div>
+            <div className="text-[11px] font-medium flex items-center gap-1">
+              {isSuper ? (
+                <span className="text-amber-600 font-bold flex items-center gap-0.5">
+                  👑 Super Admin
+                </span>
+              ) : tier === 'pro' ? (
+                <span className="text-purple-600 font-bold flex items-center gap-0.5">
+                  ⭐ Pro Member
+                </span>
+              ) : (
+                <span className="text-blue-600">Bnb & Tax Manager</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Language Switcher Button in Sidebar Header */}
+        <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+          <button
+            onClick={() => setLanguage('el')}
+            className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+              language === 'el' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+            }`}
+            title="Ελληνικά"
+          >
+            🇬🇷
+          </button>
+          <button
+            onClick={() => setLanguage('en')}
+            className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+              language === 'en' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+            }`}
+            title="English"
+          >
+            🇬🇧
+          </button>
         </div>
       </div>
 
@@ -111,16 +138,18 @@ export default function Sidebar() {
             <div className="flex items-center justify-center gap-1 text-xs font-bold text-amber-900">
               <span>👑 Super Admin</span>
             </div>
-            <p className="text-[11px] text-amber-800 mt-0.5 font-medium">Όλες οι λειτουργίες ξεκλείδωτες</p>
+            <p className="text-[11px] text-amber-800 mt-0.5 font-medium">
+              {language === 'en' ? 'All features unlocked' : 'Όλες οι λειτουργίες ξεκλείδωτες'}
+            </p>
           </div>
         ) : isPro ? (
           <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-3 text-center shadow-xs">
             <div className="flex items-center justify-center gap-1 text-xs font-bold text-purple-900">
               <Sparkles size={13} className="text-purple-600" />
-              <span>Πλάνο Pro Ενεργό</span>
+              <span>{language === 'en' ? 'Pro Plan Active' : 'Πλάνο Pro Ενεργό'}</span>
             </div>
             <p className="text-[10px] text-purple-700 mt-0.5 font-medium">
-              {subInfo ? subInfo.label : 'Έως 3 Ακίνητα & WhatsApp'}
+              {subInfo ? subInfo.label : (language === 'en' ? 'Up to 3 properties' : 'Έως 3 Ακίνητα & WhatsApp')}
             </p>
           </div>
         ) : (
@@ -131,9 +160,11 @@ export default function Sidebar() {
           >
             <div className="flex items-center justify-center gap-1 text-xs font-bold text-blue-900">
               <Sparkles size={13} className="text-amber-500" />
-              <span>Αναβάθμιση σε Pro</span>
+              <span>{language === 'en' ? 'Upgrade to Pro' : 'Αναβάθμιση σε Pro'}</span>
             </div>
-            <p className="text-[11px] text-blue-700 mt-0.5">Από 4,08 € / μήνα</p>
+            <p className="text-[11px] text-blue-700 mt-0.5">
+              {language === 'en' ? 'From €4.08 / mo' : 'Από 4,08 € / μήνα'}
+            </p>
           </Link>
         )}
 
@@ -151,7 +182,7 @@ export default function Sidebar() {
           className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 w-full transition-all"
         >
           <LogOut size={18} />
-          Αποσύνδεση
+          {t('nav.logout', 'Αποσύνδεση')}
         </button>
       </div>
     </>
@@ -171,6 +202,26 @@ export default function Sidebar() {
           <span className="font-bold text-gray-900 text-base">GreekHost</span>
         </Link>
         <div className="flex items-center gap-2">
+          {/* Language Switcher in Mobile Topbar */}
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+            <button
+              onClick={() => setLanguage('el')}
+              className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold ${
+                language === 'el' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500'
+              }`}
+            >
+              🇬🇷
+            </button>
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold ${
+                language === 'en' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500'
+              }`}
+            >
+              🇬🇧
+            </button>
+          </div>
+
           <Link
             href="/dashboard/pricing"
             className="bg-amber-100 text-amber-900 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
