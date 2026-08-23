@@ -256,7 +256,7 @@ export default function TaxCalculatorHub({ bookings, properties, currentYear }: 
             €{taxReport.estimatedIncomeTax.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-[10px] text-orange-700 mt-1">
-            Κλίμακα 15% (έως 12k€) / 35% / 45%
+            Κλίμακα 15% (έως 12k€) / 25% / 35% / 45%
           </p>
         </div>
 

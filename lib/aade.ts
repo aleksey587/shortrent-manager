@@ -63,10 +63,11 @@ export function getClimateFeeMonthlyDeadline(month: number, year: number): Date 
 }
 
 /**
- * Υπολογισμός εκτιμώμενου φόρου εισοδήματος από ενοίκια (κλίμακα 2024-2026):
+ * Υπολογισμός εκτιμώμενου φόρου εισοδήματος από ενοίκια (Νέα Κλίμακα 2026):
  * 0–12.000€ → 15%
- * 12.001–35.000€ → 35%
- * >35.000€ → 45%
+ * 12.001–24.000€ → 25% (Νέο κλιμάκιο)
+ * 24.001–36.000€ → 35%
+ * >36.000€ → 45%
  */
 export function estimateTax(annualIncome: number): number {
   if (annualIncome <= 0) return 0
@@ -74,10 +75,12 @@ export function estimateTax(annualIncome: number): number {
   let tax = 0
   if (annualIncome <= 12000) {
     tax = annualIncome * 0.15
-  } else if (annualIncome <= 35000) {
-    tax = 12000 * 0.15 + (annualIncome - 12000) * 0.35
+  } else if (annualIncome <= 24000) {
+    tax = 12000 * 0.15 + (annualIncome - 12000) * 0.25
+  } else if (annualIncome <= 36000) {
+    tax = 12000 * 0.15 + 12000 * 0.25 + (annualIncome - 24000) * 0.35
   } else {
-    tax = 12000 * 0.15 + 23000 * 0.35 + (annualIncome - 35000) * 0.45
+    tax = 12000 * 0.15 + 12000 * 0.25 + 12000 * 0.35 + (annualIncome - 36000) * 0.45
   }
 
   return Math.round(tax * 100) / 100

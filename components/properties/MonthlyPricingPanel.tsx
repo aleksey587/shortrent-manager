@@ -262,7 +262,7 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
                     <span>Πάγιο Τέλος Καθαριότητας (€ ανά κράτηση)</span>
                   </div>
                   <p className="text-[11px] text-teal-700 mt-0.5">
-                    Χρεώνεται <strong>1 φορά ανά κράτηση</strong> (όχι ανά νύχτα). Δεν φορολογείται ως ενοίκιο στο ΑΑΔΕ.
+                    Χρεώνεται <strong>1 φορά ανά κράτηση</strong> (όχι ανά νύχτα). Αφαιρείται από το καθαρό μίσθωμα κατά τον υπολογισμό κερδοφορίας.
                   </p>
                 </div>
                 <div className="relative w-36 shrink-0">

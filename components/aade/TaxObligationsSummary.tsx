@@ -100,7 +100,7 @@ export default function TaxObligationsSummary() {
           {/* Χρέωση 1: Φόρος Εισοδήματος */}
           <div className="bg-white rounded-xl p-4 border border-emerald-100 space-y-2">
             <span className="font-semibold text-sm text-gray-900 block">
-              1. Φόρος Εισοδήματος (Αυτοτελής Κλίμακα Ενοικίων)
+              1. Φόρος Εισοδήματος (Αυτοτελής Κλίμακα Ενοικίων 2026)
             </span>
             <div className="bg-gray-50 rounded-lg p-2.5 text-xs text-gray-700 space-y-1">
               <div className="flex justify-between">
@@ -108,11 +108,15 @@ export default function TaxObligationsSummary() {
                 <strong className="text-gray-900">15%</strong>
               </div>
               <div className="flex justify-between">
-                <span>• 12.001 € έως 35.000 €:</span>
+                <span>• 12.001 € έως 24.000 €:</span>
+                <strong className="text-emerald-700">25% (Νέο ελαφρυντικό κλιμάκιο)</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>• 24.001 € έως 36.000 €:</span>
                 <strong className="text-gray-900">35%</strong>
               </div>
               <div className="flex justify-between">
-                <span>• Άνω των 35.000 €:</span>
+                <span>• Άνω των 36.000 €:</span>
                 <strong className="text-gray-900">45%</strong>
               </div>
             </div>
