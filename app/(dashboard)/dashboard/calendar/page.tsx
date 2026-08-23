@@ -322,52 +322,52 @@ export default function CalendarPage() {
                     {/* Bookings rendering: Full bar or 50/50 Split on Turnaround */}
                     {hasAnyBooking ? (
                       <div className="space-y-1.5 my-auto z-2">
-                        {/* CASE 1: Turnaround Day (Same Day Checkout & Checkin) -> 50% / 50% Split */}
+                        {/* CASE 1: Turnaround Day (Same Day Checkout & Checkin) -> 50/50 Split WITH VISUAL GAP */}
                         {isTurnaround ? (
-                          <div className="flex items-center w-full h-7 -mx-1.5">
-                            {/* Left Half: Departing Guest (Checkout morning) */}
+                          <div className="flex items-center w-full h-7 -mx-1 px-0.5 gap-1.5">
+                            {/* Left Half: Departing Guest (Checkout morning) -> Points Left ◂ */}
                             {dayCheckouts.slice(0, 1).map(b => (
                               <div
                                 key={`out-${b.id}`}
                                 onClick={() => setSelectedBooking(b)}
-                                className={`w-1/2 h-full flex items-center justify-between px-1.5 text-[10px] font-bold shadow-xs cursor-pointer transition-all border-r border-white/30 ${getPlatformBg(b.platform)}`}
-                                title={`Αναχώρηση (Out): ${b.guest_name || 'Επισκέπτης'}`}
+                                className={`flex-1 h-full flex items-center justify-between pl-1.5 pr-2 text-[10px] font-bold shadow-xs cursor-pointer transition-all rounded-r-lg ${getPlatformBg(b.platform)}`}
+                                title={`Αναχώρηση (Out): ${b.guest_name || 'Reserved'}`}
                               >
-                                <span className="truncate leading-none">{b.guest_name || 'Out'}</span>
-                                <span className="text-[8px] opacity-80 shrink-0">⇥</span>
+                                <span className="text-[9px] font-black shrink-0">◂</span>
+                                <span className="truncate leading-none">{b.guest_name || 'Reserved'}</span>
                               </div>
                             ))}
 
-                            {/* Right Half: Arriving Guest (Checkin afternoon) */}
+                            {/* Right Half: Arriving Guest (Checkin afternoon) -> Start Dot ● */}
                             {dayCheckins.slice(0, 1).map(b => (
                               <div
                                 key={`in-${b.id}`}
                                 onClick={() => setSelectedBooking(b)}
-                                className={`w-1/2 h-full flex items-center gap-1 px-1.5 text-[10px] font-bold shadow-xs cursor-pointer transition-all ${getPlatformBg(b.platform)}`}
-                                title={`Άφιξη (In): ${b.guest_name || 'Επισκέπτης'}`}
+                                className={`flex-1 h-full flex items-center gap-1 pl-1.5 pr-1 text-[10px] font-bold shadow-xs cursor-pointer transition-all rounded-l-lg ${getPlatformBg(b.platform)}`}
+                                title={`Άφιξη (In): ${b.guest_name || 'Reserved'}`}
                               >
-                                <span className="text-[8px] opacity-80 shrink-0">↦</span>
-                                <span className="truncate leading-none">{b.guest_name || 'In'}</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 shadow-2xs" />
+                                <span className="truncate leading-none">{b.guest_name || 'Reserved'}</span>
                               </div>
                             ))}
                           </div>
                         ) : (
                           /* CASE 2: Single Check-in, Check-out or Ongoing Full Day */
                           <>
-                            {/* Checkouts without same-day checkin (Occupy left half of cell) */}
+                            {/* Checkouts without same-day checkin (Occupy left half of cell, points left ◂) */}
                             {dayCheckouts.map(b => (
                               <div
                                 key={`co-${b.id}`}
                                 onClick={() => setSelectedBooking(b)}
                                 className={`cursor-pointer h-7 w-1/2 -ml-1.5 pr-2 pl-1.5 rounded-r-lg flex items-center justify-between text-[10px] font-bold shadow-xs transition-all ${getPlatformBg(b.platform)}`}
-                                title={`Αναχώρηση (Check-out): ${b.guest_name || 'Επισκέπτης'}`}
+                                title={`Αναχώρηση (Check-out): ${b.guest_name || 'Reserved'}`}
                               >
-                                <span className="truncate leading-none">{b.guest_name || 'Out'}</span>
-                                <span className="text-[8px] opacity-80 shrink-0">⇥</span>
+                                <span className="text-[9px] font-black shrink-0">◂</span>
+                                <span className="truncate leading-none">{b.guest_name || 'Reserved'}</span>
                               </div>
                             ))}
 
-                            {/* Checkins without same-day checkout (Starts with rounded left, spans right) */}
+                            {/* Checkins without same-day checkout (Starts with white dot ●, rounded left, spans right) */}
                             {dayCheckins.map(b => {
                               const checkOutDate = parseISO(b.check_out)
                               const is1Night = differenceInDays(checkOutDate, parseISO(b.check_in)) === 1
@@ -380,10 +380,10 @@ export default function CalendarPage() {
                                       ? 'rounded-lg mx-0.5 px-2'
                                       : 'rounded-l-lg -mr-1.5 pl-2 pr-1'
                                   }`}
-                                  title={`Άφιξη (Check-in): ${b.guest_name || 'Επισκέπτης'}`}
+                                  title={`Άφιξη (Check-in): ${b.guest_name || 'Reserved'}`}
                                 >
-                                  <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                                  <span className="truncate leading-none">{b.guest_name || 'Επισκέπτης'}</span>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 shadow-2xs" />
+                                  <span className="truncate leading-none">{b.guest_name || 'Reserved'}</span>
                                   {b.nights && (
                                     <span className="text-[9px] opacity-85 font-normal shrink-0">
                                       ({b.nights}ν)
@@ -408,11 +408,11 @@ export default function CalendarPage() {
                                       ? 'rounded-r-lg -ml-1.5 pr-2 pl-1'
                                       : 'rounded-none -mx-1.5 px-1'
                                   }`}
-                                  title={`${b.guest_name || 'Επισκέπτης'} (Διαμονή)`}
+                                  title={`${b.guest_name || 'Reserved'} (Διαμονή)`}
                                 >
                                   {isFirstDayOfWeek && (
                                     <span className="truncate leading-none pl-1">
-                                      {b.guest_name || 'Επισκέπτης'}
+                                      {b.guest_name || 'Reserved'}
                                     </span>
                                   )}
                                 </div>
@@ -513,12 +513,19 @@ export default function CalendarPage() {
 
                         if (end < monthStart || start > monthEnd) return null
 
+                        const startDayStr = format(start, 'yyyy-MM-dd')
+                        const endDayStr = format(end, 'yyyy-MM-dd')
+                        const hasTurnaroundAtStart = turnarounds.has(`${prop.id}:${startDayStr}`)
+                        const hasTurnaroundAtEnd = turnarounds.has(`${prop.id}:${endDayStr}`)
+
                         const clampedStart = Math.max(0, startIndex)
                         const clampedEnd = Math.min(timelineDays.length, startIndex + totalDays)
                         const spanDays = Math.max(1, clampedEnd - clampedStart)
 
-                        const leftPercent = (clampedStart / timelineDays.length) * 100
-                        const widthPercent = (spanDays / timelineDays.length) * 100
+                        // Add small gap on turnaround days so bookings do not touch each other
+                        const gapSize = dayWidthPercent * 0.12
+                        const leftPercent = (clampedStart / timelineDays.length) * 100 + (hasTurnaroundAtStart ? gapSize : 0.1)
+                        const widthPercent = Math.max(1, (spanDays / timelineDays.length) * 100 - (hasTurnaroundAtStart ? gapSize : 0) - (hasTurnaroundAtEnd ? gapSize : 0.2))
 
                         const plat = PLATFORM_INFO[b.platform] || PLATFORM_INFO.other
 
@@ -526,17 +533,24 @@ export default function CalendarPage() {
                           <div
                             key={b.id}
                             onClick={() => setSelectedBooking(b)}
-                            className="absolute top-2.5 h-8 rounded-xl px-2.5 flex items-center gap-1.5 text-[11px] font-bold text-white shadow-sm cursor-pointer transition-transform hover:scale-[1.02] truncate z-2"
+                            className="absolute top-2.5 h-8 rounded-xl px-2 flex items-center justify-between gap-1.5 text-[11px] font-bold text-white shadow-sm cursor-pointer transition-transform hover:scale-[1.02] truncate z-2"
                             style={{
                               left: `${leftPercent}%`,
                               width: `${widthPercent}%`,
                               backgroundColor: prop.color,
                             }}
-                            title={`${b.guest_name || 'Επισκέπτης'} (${b.platform})`}
+                            title={`${b.guest_name || 'Reserved'} (${b.platform})`}
                           >
-                            <span className="w-2 h-2 rounded-full bg-white/80 shrink-0" />
-                            <span className="truncate">{b.guest_name || 'Επισκέπτης'}</span>
-                            <span className="text-[9px] opacity-80 uppercase hidden sm:inline">· {b.platform}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {/* Dot / Circle indicator at Check-in start */}
+                              <span className="w-2 h-2 rounded-full bg-white shrink-0 shadow-2xs" />
+                              <span className="truncate">{b.guest_name || 'Reserved'}</span>
+                            </div>
+
+                            {/* Left-pointing arrow ◂ at Check-out end */}
+                            <span className="text-[10px] font-black text-white/90 shrink-0 ml-1">
+                              ◂
+                            </span>
                           </div>
                         )
                       })}
