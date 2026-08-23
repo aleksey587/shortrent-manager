@@ -37,6 +37,8 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [applyResult, setApplyResult] = useState<string | null>(null)
+  const [syncingChannex, setSyncingChannex] = useState(false)
+  const [channexResult, setChannexResult] = useState<string | null>(null)
   const [showQuickFill, setShowQuickFill] = useState(false)
   const [quickHigh, setQuickHigh] = useState('120')
   const [quickMid, setQuickMid] = useState('85')
@@ -165,6 +167,28 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
     }
     setApplying(false)
     setTimeout(() => setApplyResult(null), 5000)
+  }
+
+  async function syncToChannex() {
+    setSyncingChannex(true)
+    setChannexResult(null)
+    try {
+      const res = await fetch('/api/channex/sync-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId, propertyName, year, rates }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setChannexResult(`⚡ ${data.message}`)
+      } else {
+        setChannexResult(`❌ Σφάλμα Channex: ${data.error}`)
+      }
+    } catch {
+      setChannexResult('❌ Σφάλμα σύνδεσης με το Channex API.')
+    }
+    setSyncingChannex(false)
+    setTimeout(() => setChannexResult(null), 6000)
   }
 
   const currentMonth = new Date().getMonth() + 1
@@ -430,6 +454,40 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
                 {applyResult && (
                   <p className="text-xs font-bold text-blue-900 animate-in fade-in duration-300">
                     {applyResult}
+                  </p>
+                )}
+              </div>
+
+              {/* Channex 2-Way Direct Channel Sync */}
+              <div className="mt-3 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-extrabold text-emerald-950">
+                      ⚡ 2-Way Channel Manager Sync (Channex API)
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-md border border-emerald-200">
+                    API Connected
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  Στείλτε τις μηνιαίες τιμές απευθείας στα κανάλια (Airbnb, Booking.com, VRBO) μέσω του επίσημου Channex integration.
+                </p>
+                <div className="flex gap-2 flex-wrap items-center">
+                  <button
+                    type="button"
+                    disabled={syncingChannex}
+                    onClick={syncToChannex}
+                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+                  >
+                    {syncingChannex ? <RefreshCw size={13} className="animate-spin" /> : <Zap size={13} />}
+                    {syncingChannex ? 'Συγχρονισμός...' : '⚡ Άμεση Αποστολή Τιμών σε Airbnb & Booking'}
+                  </button>
+                </div>
+                {channexResult && (
+                  <p className="text-xs font-bold text-emerald-900 animate-in fade-in duration-300">
+                    {channexResult}
                   </p>
                 )}
               </div>
