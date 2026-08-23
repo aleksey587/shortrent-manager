@@ -90,6 +90,8 @@ export default function PricingPage() {
       features: isEn ? [
         'Up to 3 Properties',
         'All Starter features included',
+        '⚡ 2-Way Channel Manager: Direct Rate Sync to Airbnb & Booking',
+        '💬 Unified Guest Inbox: Read & Reply to Airbnb/Booking chats',
         'Cleaning Hub: Monthly WhatsApp Dispatch & Turnaround Alerts',
         'Guest Messages: Unlimited Custom Templates Builder',
         'Digital Guest Guidebook Mobile App',
@@ -98,6 +100,8 @@ export default function PricingPage() {
       ] : [
         'Έως 3 Ακίνητα',
         'Όλα τα χαρακτηριστικά του Starter',
+        '⚡ 2-Way Channel Manager: Άμεση Αλλαγή Τιμών σε Airbnb & Booking.com',
+        '💬 Ενιαίο Inbox: Ανάγνωση & Απάντηση Μηνυμάτων Επισκεπτών',
         'Καθαρισμοί: Μηνιαίο WhatsApp Dispatch & Turnaround Alerts',
         'Μηνύματα Επισκεπτών: Δημιουργία Απεριόριστων Custom Προτύπων',
         'Digital Guest Guidebook (Ψηφιακός Οδηγός Επισκέπτη)',
@@ -132,6 +136,7 @@ export default function PricingPage() {
       features: isEn ? [
         'Unlimited Properties (5+)',
         'All Pro features included',
+        '⚡ High-Frequency Realtime 2-Way Sync Engine',
         '3+ Property Commercial Rules Tracking (VAT 13%, EFKA)',
         'Bulk Export for Accounting Firms',
         'Upcoming: Direct Booking Mini-Sites (0% Commissions)',
@@ -139,6 +144,7 @@ export default function PricingPage() {
       ] : [
         'Απεριόριστα Ακίνητα (5+)',
         'Όλα τα χαρακτηριστικά του Pro',
+        '⚡ High-Frequency Realtime 2-Way Sync Engine',
         'Παρακολούθηση Κανόνα 3+ Ακινήτων (ΦΠΑ 13%, Τέλος Παρεπιδημούντων, ΕΦΚΑ)',
         'Ομαδική Εξαγωγή Αναφορών για Λογιστικά Γραφεία',
         'Προτεραιότητα στα Direct Booking Mini-Sites (0% Προμήθειες)',

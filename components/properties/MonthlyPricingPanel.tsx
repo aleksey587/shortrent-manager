@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { CalendarDays, ChevronDown, ChevronUp, Save, Euro, RefreshCw, Zap, Sparkles, Wand2 } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronUp, Save, Euro, RefreshCw, Zap, Sparkles, Wand2, Lock } from 'lucide-react'
+import { isProUser } from '@/lib/permissions'
+import ProFeatureModal from '@/components/ui/ProFeatureModal'
 
 const MONTHS = [
   { key: 1, label: 'Ιανουάριος' },
@@ -28,6 +30,7 @@ interface Props {
 
 export default function MonthlyPricingPanel({ propertyId, propertyName, initialCleaningFee, onPropertyUpdated }: Props) {
   const supabase = createClient()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [year, setYear] = useState(new Date().getFullYear())
   const [rates, setRates] = useState<Record<number, string>>({})
@@ -39,6 +42,7 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
   const [applyResult, setApplyResult] = useState<string | null>(null)
   const [syncingChannex, setSyncingChannex] = useState(false)
   const [channexResult, setChannexResult] = useState<string | null>(null)
+  const [showProModal, setShowProModal] = useState(false)
   const [showQuickFill, setShowQuickFill] = useState(false)
   const [quickHigh, setQuickHigh] = useState('120')
   const [quickMid, setQuickMid] = useState('85')
@@ -170,6 +174,10 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
   }
 
   async function syncToChannex() {
+    if (!isProUser(userEmail)) {
+      setShowProModal(true)
+      return
+    }
     setSyncingChannex(true)
     setChannexResult(null)
     try {
@@ -495,6 +503,14 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
           )}
         </div>
       )}
+
+      {/* Pro Upgrade Modal */}
+      <ProFeatureModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        featureTitle="2-Way Channel Manager Sync (Pro / Business)"
+        featureDescription="Αναβαθμίστε στο πακέτο Pro για να στέλνετε απευθείας τις τιμές και τις διαθεσιμότητές σας στο Airbnb & Booking.com σε πραγματικό χρόνο!"
+      />
     </div>
   )
 }

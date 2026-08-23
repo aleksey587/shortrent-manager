@@ -16,16 +16,6 @@ interface ChannexPropertyPayload {
   email?: string
 }
 
-interface RateUpdateItem {
-  property_id: string
-  rate_plan_id: string
-  date_from: string // YYYY-MM-DD
-  date_to: string   // YYYY-MM-DD
-  rate: number      // in cents or standard units depending on rate plan
-  min_stay_arrival?: number
-  closed?: boolean
-}
-
 /**
  * Standard fetch wrapper for Channex API
  */
@@ -140,6 +130,42 @@ export async function pushChannexRestrictions(updates: {
   return channexFetch('/restrictions', {
     method: 'POST',
     body: JSON.stringify({ values })
+  })
+}
+
+/**
+ * ==========================================
+ * 💬 GUEST MESSAGING API (AIRBNB & BOOKING)
+ * ==========================================
+ */
+
+/**
+ * Fetch incoming and outgoing guest messages / threads from OTAs
+ */
+export async function listChannexMessages(propertyId?: string) {
+  const query = propertyId ? `?filter[property_id]=${propertyId}` : ''
+  return channexFetch(`/messages${query}`)
+}
+
+/**
+ * Send a reply message directly to a guest on Airbnb / Booking.com
+ */
+export async function sendChannexGuestMessage(payload: {
+  booking_id?: string
+  thread_id?: string
+  property_id: string
+  message: string
+}) {
+  return channexFetch('/messages', {
+    method: 'POST',
+    body: JSON.stringify({
+      message: {
+        property_id: payload.property_id,
+        booking_id: payload.booking_id,
+        thread_id: payload.thread_id,
+        message: payload.message,
+      }
+    })
   })
 }
 
