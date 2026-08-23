@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { propertyId, propertyName, year, rates } = body
+    const { propertyId, propertyName, year, rates, targetPlatform = 'all', markup = 0 } = body
 
     if (!propertyId || !propertyName || !rates) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
@@ -49,24 +49,18 @@ export async function POST(req: NextRequest) {
 
       const ratePlanRes = await createChannexRatePlan(channexPropId, roomId, 'Standard Rate')
       const ratePlanId = ratePlanRes?.data?.id
-
-      // Save Channex mappings to local database if available
-      try {
-        await supabase
-          .from('properties')
-          .update({
-            // If table has channex_property_id column or metadata
-          })
-          .eq('id', propertyId)
-      } catch {}
     }
 
-    // 2. Prepare rate updates for all 12 months
+    // 2. Prepare rate updates with optional markup
     const restrictionsUpdates = []
     for (const [monthStr, priceVal] of Object.entries(rates)) {
       const month = Number(monthStr)
-      const price = parseFloat(String(priceVal))
+      let price = parseFloat(String(priceVal))
       if (!price || isNaN(price) || price <= 0) continue
+
+      if (markup !== 0) {
+        price = Math.round(price * (1 + markup / 100))
+      }
 
       const startMonth = month < 10 ? `0${month}` : `${month}`
       const lastDay = new Date(year, month, 0).getDate()
@@ -82,10 +76,20 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    const platformNames: Record<string, string> = {
+      all: 'όλα τα κανάλια (Airbnb, Booking.com, VRBO)',
+      airbnb: 'το Airbnb',
+      booking: 'το Booking.com',
+      vrbo: 'το VRBO',
+    }
+
+    const targetLabel = platformNames[targetPlatform] || 'τα επιλεγμένα κανάλια'
+
     return NextResponse.json({
       success: true,
       channex_property_id: channexPropId,
-      message: `Οι τιμές για ${Object.keys(rates).length} μήνες καταχωρήθηκαν επιτυχώς στο Channex Channel Manager!`,
+      targetPlatform,
+      message: `Οι τιμές για ${Object.keys(rates).length} μήνες εστάλησαν επιτυχώς στο ${targetLabel}!`,
     })
   } catch (err: any) {
     console.error('Channex Sync API error:', err)

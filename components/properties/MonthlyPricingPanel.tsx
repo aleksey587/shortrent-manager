@@ -184,7 +184,9 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
     setTimeout(() => setApplyResult(null), 5000)
   }
 
-  async function syncToChannex() {
+  const [bookingMarkup, setBookingMarkup] = useState(false)
+
+  async function syncToChannex(targetPlatform: 'all' | 'airbnb' | 'booking' = 'all') {
     if (!isProUser(userEmail)) {
       setShowProModal(true)
       return
@@ -195,13 +197,20 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
       const res = await fetch('/api/channex/sync-rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ propertyId, propertyName, year, rates }),
+        body: JSON.stringify({
+          propertyId,
+          propertyName,
+          year,
+          rates,
+          targetPlatform,
+          markup: (targetPlatform === 'booking' && bookingMarkup) ? 15 : 0
+        }),
       })
       const data = await res.json()
       if (data.success) {
         setChannexResult(`⚡ ${data.message}`)
       } else {
-        setChannexResult(`❌ Σφάλμα Channex: ${data.error}`)
+        setChannexResult(`❌ Σφάλμα: ${data.error}`)
       }
     } catch {
       setChannexResult('❌ Σφάλμα σύνδεσης με το Channex API.')
@@ -478,7 +487,7 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
               </div>
 
               {/* Channex 2-Way Direct Channel Sync */}
-              <div className="mt-3 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl space-y-2.5">
+              <div className="mt-3 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -490,22 +499,65 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
                     API Connected
                   </span>
                 </div>
+
                 <p className="text-[11px] text-emerald-800 leading-relaxed">
-                  Στείλτε τις μηνιαίες τιμές απευθείας στα κανάλια (Airbnb, Booking.com, VRBO) μέσω του επίσημου Channex integration.
+                  Επιλέξτε αν θέλετε να στείλετε τις τιμές σε <strong>συγκεκριμένη πλατφόρμα ξεχωριστά</strong> ή σε <strong>όλα τα κανάλια ταυτόχρονα</strong>:
                 </p>
-                <div className="flex gap-2 flex-wrap items-center">
+
+                {/* Booking.com Markup Checkbox */}
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none bg-white/80 p-2 rounded-xl border border-emerald-200/80">
+                  <input
+                    type="checkbox"
+                    checked={bookingMarkup}
+                    onChange={e => setBookingMarkup(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>
+                    📈 Αυτόματη προσαρμογή <strong>+15% στο Booking.com</strong> (για κάλυψη προμήθειας Booking)
+                  </span>
+                </label>
+
+                {/* Platform Sync Action Buttons */}
+                <div className="flex gap-2 flex-wrap items-center pt-1">
+                  {/* Airbnb only */}
                   <button
                     type="button"
                     disabled={syncingChannex}
-                    onClick={syncToChannex}
-                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+                    onClick={() => syncToChannex('airbnb')}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all disabled:opacity-50 active:scale-95"
+                    title="Αποστολή τιμών αποκλειστικά στο Airbnb"
+                  >
+                    {syncingChannex ? <RefreshCw size={13} className="animate-spin" /> : <span>🔴</span>}
+                    <span>Μόνο σε Airbnb</span>
+                  </button>
+
+                  {/* Booking.com only */}
+                  <button
+                    type="button"
+                    disabled={syncingChannex}
+                    onClick={() => syncToChannex('booking')}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all disabled:opacity-50 active:scale-95"
+                    title="Αποστολή τιμών αποκλειστικά στο Booking.com"
+                  >
+                    {syncingChannex ? <RefreshCw size={13} className="animate-spin" /> : <span>🔵</span>}
+                    <span>Μόνο σε Booking.com</span>
+                  </button>
+
+                  {/* All Channels */}
+                  <button
+                    type="button"
+                    disabled={syncingChannex}
+                    onClick={() => syncToChannex('all')}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-sm transition-all disabled:opacity-50 active:scale-95"
+                    title="Ταυτόχρονη αποστολή σε όλα τα κανάλια"
                   >
                     {syncingChannex ? <RefreshCw size={13} className="animate-spin" /> : <Zap size={13} />}
-                    {syncingChannex ? 'Συγχρονισμός...' : '⚡ Άμεση Αποστολή Τιμών σε Airbnb & Booking'}
+                    <span>⚡ Αποστολή σε Όλα (All Channels)</span>
                   </button>
                 </div>
+
                 {channexResult && (
-                  <p className="text-xs font-bold text-emerald-900 animate-in fade-in duration-300">
+                  <p className="text-xs font-bold text-emerald-900 bg-white/90 p-2.5 rounded-xl border border-emerald-200 animate-in fade-in duration-300">
                     {channexResult}
                   </p>
                 )}
