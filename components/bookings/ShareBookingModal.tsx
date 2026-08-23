@@ -44,8 +44,9 @@ export default function ShareBookingModal({ booking, accountantEmail = '', isPro
   const taxableRental = Math.max(0, totalPrice - cleaningFee)
 
   const plLower = (booking.platform || '').toLowerCase()
-  const hostFeePercentage = plLower.includes('booking') ? 15 : (plLower.includes('airbnb') ? 3 : (plLower.includes('vrbo') ? 5 : 0))
-  const hostFeeAmount = Math.round(totalPrice * (hostFeePercentage / 100) * 100) / 100
+  const baseFeePercentage = plLower.includes('booking') ? 15 : (plLower.includes('airbnb') ? 3 : (plLower.includes('vrbo') ? 5 : 0))
+  const effectiveFeePercentage = baseFeePercentage > 0 ? baseFeePercentage * 1.24 : 0
+  const hostFeeAmount = Math.round(totalPrice * (effectiveFeePercentage / 100) * 100) / 100
   const netBankPayout = Math.max(0, totalPrice - hostFeeAmount - cleaningFee)
 
   const formattedMessage = `📌 Στοιχεία Κράτησης για Δήλωση στην ΑΑΔΕ
@@ -57,7 +58,7 @@ export default function ShareBookingModal({ booking, accountantEmail = '', isPro
 💳 Πλατφόρμα: ${booking.platform}
 ------------------------------------
 💵 Συνολική Είσπραξη (Gross): €${totalPrice.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
-🏷️ Τέλος Οικοδεσπότη / Προμήθεια (${hostFeePercentage}%): €${hostFeeAmount.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+🏷️ Τέλος Οικοδεσπότη (${baseFeePercentage}% + 24% ΦΠΑ = ${effectiveFeePercentage.toFixed(2)}%): €${hostFeeAmount.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
 🧹 Τέλος Καθαριότητας: €${cleaningFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
 🏦 Καθαρά στην Τράπεζα (Payout): €${netBankPayout.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
 💰 Φορολογητέο Μίσθωμα (Δήλωση ΑΑΔΕ): €${taxableRental.toLocaleString('el-GR', { minimumFractionDigits: 2 })}

@@ -33,27 +33,39 @@ interface Props {
   currentYear: number
 }
 
-// Platform commission percentages
-export function getPlatformHostFee(platform: string, gross: number): { percent: number; fee: number } {
-  if (!gross || gross <= 0) return { percent: 0, fee: 0 }
+// Platform commission percentages + 24% Greek VAT on host fees
+export function getPlatformHostFee(platform: string, gross: number, includeVat: boolean = true): { percent: number; effectivePercent: number; fee: number; vat: number } {
+  if (!gross || gross <= 0) return { percent: 0, effectivePercent: 0, fee: 0, vat: 0 }
   const pl = (platform || '').toLowerCase()
-  let percent = 3
+  let basePercent = 3
   if (pl.includes('booking')) {
-    percent = 15
+    basePercent = 15
   } else if (pl.includes('airbnb')) {
-    percent = 3
+    basePercent = 3
   } else if (pl.includes('vrbo')) {
-    percent = 5
+    basePercent = 5
   } else if (pl.includes('manual') || pl.includes('direct') || pl.includes('άλλη')) {
-    percent = 0
+    basePercent = 0
   }
-  const fee = Math.round(gross * (percent / 100) * 100) / 100
-  return { percent, fee }
+
+  // With Greek VAT 24%: Airbnb 3% * 1.24 = 3.72%, Booking 15% * 1.24 = 18.60%
+  const effectivePercent = includeVat && basePercent > 0 ? basePercent * 1.24 : basePercent
+  const rawFee = gross * (basePercent / 100)
+  const vat = includeVat && basePercent > 0 ? rawFee * 0.24 : 0
+  const totalFee = Math.round((rawFee + vat) * 100) / 100
+
+  return {
+    percent: basePercent,
+    effectivePercent: Math.round(effectivePercent * 100) / 100,
+    fee: totalFee,
+    vat: Math.round(vat * 100) / 100,
+  }
 }
 
 export default function TaxCalculatorHub({ bookings, properties, currentYear }: Props) {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear)
   const [propertyTypeMode, setPropertyTypeMode] = useState<'standard' | 'villa'>('standard')
+  const [includeVatOnHostFee, setIncludeVatOnHostFee] = useState<boolean>(true)
 
   // Filter bookings by year
   const yearBookings = useMemo(() => {
@@ -73,20 +85,20 @@ export default function TaxCalculatorHub({ bookings, properties, currentYear }: 
     return yearBookings.reduce((sum, b) => sum + (b.nights ?? 0), 0)
   }, [yearBookings])
 
-  // Total Platform Host Fees
+  // Total Platform Host Fees (including 24% VAT)
   const totalHostFees = useMemo(() => {
     return yearBookings.reduce((sum, b) => {
-      const { fee } = getPlatformHostFee(b.platform, b.total_price ?? 0)
+      const { fee } = getPlatformHostFee(b.platform, b.total_price ?? 0, includeVatOnHostFee)
       return sum + fee
     }, 0)
-  }, [yearBookings])
+  }, [yearBookings, includeVatOnHostFee])
 
   // Total Cleaning Fees
   const totalCleaningFees = useMemo(() => {
     return yearBookings.reduce((sum, b) => sum + (b.cleaning_fee ?? 0), 0)
   }, [yearBookings])
 
-  // Net Bank Payout (Gross - Platform Commissions - Cleanings)
+  // Net Bank Payout (Gross - Platform Commissions with VAT - Cleanings)
   const netBankPayout = Math.max(0, totalIncome - totalHostFees - totalCleaningFees)
 
   // Total Climate Resilience Fee calculated per booking based on dates
@@ -111,7 +123,7 @@ export default function TaxCalculatorHub({ bookings, properties, currentYear }: 
       const monthBookings = yearBookings.filter(b => new Date(b.check_in).getMonth() === monthIdx)
       const income = monthBookings.reduce((s, b) => s + (b.total_price ?? 0), 0)
       const cleaning = monthBookings.reduce((s, b) => s + (b.cleaning_fee ?? 0), 0)
-      const hostFee = monthBookings.reduce((s, b) => s + getPlatformHostFee(b.platform, b.total_price ?? 0).fee, 0)
+      const hostFee = monthBookings.reduce((s, b) => s + getPlatformHostFee(b.platform, b.total_price ?? 0, includeVatOnHostFee).fee, 0)
       const netPayout = Math.max(0, income - hostFee - cleaning)
       const nights = monthBookings.reduce((s, b) => s + (b.nights ?? 0), 0)
       const climateFee = monthBookings.reduce((s, b) => {
@@ -136,7 +148,7 @@ export default function TaxCalculatorHub({ bookings, properties, currentYear }: 
         deadline,
       }
     }).filter(m => m.count > 0 || m.income > 0)
-  }, [yearBookings, selectedYear, propertyTypeMode])
+  }, [yearBookings, selectedYear, propertyTypeMode, includeVatOnHostFee])
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-7 space-y-6">
@@ -149,11 +161,24 @@ export default function TaxCalculatorHub({ bookings, properties, currentYear }: 
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Αυτόματος υπολογισμός Τέλους Οικοδεσπότη, Φόρου Εισοδήματος και Τέλους Ανθεκτικότητας (Κλιματικής Κρίσης).
+            Αυτόματος υπολογισμός Τέλους Οικοδεσπότη (+24% ΦΠΑ), Φόρου Εισοδήματος και Τέλους Κλιματικής Κρίσης.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIncludeVatOnHostFee(!includeVatOnHostFee)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${
+              includeVatOnHostFee
+                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                : 'bg-gray-50 border-gray-200 text-gray-600'
+            }`}
+            title="Υπολογισμός ελληνικού ΦΠΑ 24% επί της προμήθειας πλατφόρμας"
+          >
+            {includeVatOnHostFee ? '✅ +24% ΦΠΑ Προμηθειών (Ιδιώτες)' : '⚪ Χωρίς ΦΠΑ (Επαγγελματικό VIES)'}
+          </button>
+
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(parseInt(e.target.value))}
