@@ -185,28 +185,40 @@ export default function PricingPage() {
 
   return (
     <div className="space-y-10 max-w-6xl mx-auto pb-12">
-      {/* Top Early Bird Launch Announcement Banner */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white rounded-3xl p-4 sm:p-5 shadow-lg shadow-orange-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
-        <div className="flex items-center gap-3.5 text-center sm:text-left">
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl shrink-0">
-            🔥
+      {/* Top Early Bird Launch Announcement Banner (Modern Sapphire & Indigo Glassmorphism) */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 border border-indigo-500/30 text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-indigo-950/25 flex flex-col sm:flex-row items-center justify-between gap-5 animate-in fade-in duration-300 ring-1 ring-white/10">
+        {/* Subtle luminous background glow */}
+        <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-center gap-4 text-center sm:text-left relative z-10">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-amber-400 p-[1px] shadow-lg shrink-0">
+            <div className="w-full h-full bg-slate-950/80 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl">
+              ✨
+            </div>
           </div>
           <div>
-            <div className="inline-flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider mb-0.5">
+            <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400/20 to-orange-400/20 border border-amber-400/40 text-amber-300 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider mb-1">
+              <Flame size={12} className="text-amber-400" />
               <span>{isEn ? 'Limited Time Launch Offer' : 'Ειδική Προσφορά Έναρξης — Early Bird'}</span>
             </div>
-            <h2 className="font-extrabold text-base sm:text-lg leading-tight">
+            <h2 className="font-extrabold text-base sm:text-lg text-white leading-tight">
               {isEn
                 ? 'Save up to 40% on Pro & Business Plans Before Regular Rates Apply!'
                 : 'Κλειδώστε έκπτωση έως -40% πριν την επιστροφή στις κανονικές τιμές (7,99€ & 14,99€)!'}
             </h2>
+            <p className="text-xs text-indigo-200/80 mt-0.5 font-medium">
+              {isEn
+                ? 'All existing subscribers retain lifetime early-bird rates.'
+                : 'Όλοι οι πρώτοι συνδρομητές διατηρούν μόνιμα την προνομιακή τιμή.'}
+            </p>
           </div>
         </div>
 
-        <div className="shrink-0 bg-white/15 border border-white/30 rounded-2xl px-4 py-2 text-center">
-          <span className="text-[11px] font-bold block opacity-90">{isEn ? 'Annual Plan Bonus:' : 'Ετήσιο Πλάνο:'}</span>
-          <span className="text-sm font-black text-amber-100 flex items-center justify-center gap-1">
-            <Gift size={15} />
+        <div className="shrink-0 bg-white/5 backdrop-blur-md border border-white/15 rounded-2xl px-4 py-2.5 text-center relative z-10 shadow-inner">
+          <span className="text-[11px] font-semibold block text-indigo-200">{isEn ? 'Annual Plan Bonus:' : 'Ετήσιο Πλάνο:'}</span>
+          <span className="text-sm font-black text-amber-300 flex items-center justify-center gap-1.5 mt-0.5">
+            <Gift size={15} className="text-amber-400" />
             <span>{isEn ? '2 Months FREE' : '2 Μήνες ΔΩΡΟ'}</span>
           </span>
         </div>
