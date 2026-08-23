@@ -115,7 +115,7 @@ export default function WhatsNewModal() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 leading-relaxed pl-8">
-                    5 έτοιμα στάδια επικοινωνίας σε <strong>🇬🇷 Ελληνικά & 🇬🇧 English</strong>, έξυπνη αντικατάσταση μεταβλητών (όνομα, Wi-Fi, lockbox) και δυνατότητα δημιουργίας δικών σας προτύπων.
+                    5 έτοιμα στάδια επικοινωνίας σε <strong>🇬🇷 Ελληνικά & 🇺🇸 English</strong>, έξυπνη αντικατάσταση μεταβλητών (όνομα, Wi-Fi, lockbox) και δυνατότητα δημιουργίας δικών σας προτύπων.
                   </p>
                 </div>
 

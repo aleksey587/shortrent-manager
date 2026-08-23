@@ -93,9 +93,28 @@ export default function PropertiesPage() {
       supabase.auth.getUser(),
     ])
     if (user?.email) setUserEmail(user.email)
-    setProperties(props ?? [])
-    setIcalSources(icals ?? [])
+    const fetchedProps = props ?? []
+    const fetchedIcals = icals ?? []
+    setProperties(fetchedProps)
+    setIcalSources(fetchedIcals)
     setLoading(false)
+
+    // Background Smart Sync: Auto-sync sources older than 1 hour on page visit
+    const oneHourAgo = Date.now() - 60 * 60 * 1000
+    for (const source of fetchedIcals) {
+      if (!source.last_synced_at || new Date(source.last_synced_at).getTime() < oneHourAgo) {
+        fetch('/api/sync-ical', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sourceId: source.id, propertyId: source.property_id }),
+        }).then(() => {
+          // silently refresh ical sources timestamp
+          supabase.from('ical_sources').select('*').then(({ data }) => {
+            if (data) setIcalSources(data)
+          })
+        }).catch(() => {})
+      }
+    }
   }
 
   // Load rates when opening edit modal

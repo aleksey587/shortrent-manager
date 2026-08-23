@@ -109,9 +109,9 @@ export default function Sidebar() {
               className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
                 language === 'en' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-2xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
               }`}
-              title="English"
+              title="English (US)"
             >
-              🇬🇧
+              🇺🇸
             </button>
           </div>
         </div>
@@ -226,7 +226,7 @@ export default function Sidebar() {
                 language === 'en' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-2xs' : 'text-gray-500'
               }`}
             >
-              🇬🇧
+              🇺🇸
             </button>
           </div>
 
