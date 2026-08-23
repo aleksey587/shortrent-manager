@@ -1,13 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Clock, Sparkles, Check, Plus, Trash2, Edit3, Lock, Zap,
   AlertCircle, ChevronDown, ChevronUp, Bell, Calendar, Send, ShieldCheck,
-  RotateCcw, Copy, Info, Smile
+  RotateCcw, Copy, Info, Smile, Image as ImageIcon, Upload, Eye, X, ExternalLink
 } from 'lucide-react'
 import { isProUser } from '@/lib/permissions'
 import ProFeatureModal from '@/components/ui/ProFeatureModal'
+
+export interface RulePhoto {
+  id: string
+  title: string
+  url: string
+}
 
 export interface AutomationRule {
   id: string
@@ -21,6 +27,7 @@ export interface AutomationRule {
   icon: string
   subject: string
   body: string
+  photos?: RulePhoto[]
 }
 
 const DEFAULT_RULES: AutomationRule[] = [
@@ -35,6 +42,7 @@ const DEFAULT_RULES: AutomationRule[] = [
     icon: '⚡',
     subject: 'Επιβεβαίωση Κράτησης: {{property_name}}',
     body: 'Γεια σας {{guest_name}}! Σας ευχαριστούμε πολύ για την κράτησή σας στο {{property_name}} για τις {{check_in}} έως {{check_out}}. Είμαστε στη διάθεσή σας για ό,τι χρειαστείτε!',
+    photos: [],
   },
   {
     id: 'rule-before-checkin',
@@ -46,7 +54,11 @@ const DEFAULT_RULES: AutomationRule[] = [
     channel: 'all',
     icon: '🔑',
     subject: 'Οδηγίες Άφιξης & Πρόσβασης: {{property_name}}',
-    body: 'Ανυπομονούμε να σας υποδεχτούμε αύριο {{check_in}} στο {{property_name}}!\n\n📍 Διεύθυνση: {{address}}\n🕒 Check-in: από τις {{check_in_time}}\n🔐 Κωδικός Κλειδοθήκης (Lockbox): {{lockbox_code}}\n\nΕνημερώστε μας μόλις φτάσετε!',
+    body: 'Ανυπομονούμε να σας υποδεχτούμε αύριο {{check_in}} στο {{property_name}}!\n\n📍 Διεύθυνση: {{address}}\n🕒 Check-in: από τις {{check_in_time}}\n🔐 Κωδικός Κλειδοθήκης (Lockbox): {{lockbox_code}}\n\n📸 Δείτε παρακάτω τη φωτογραφία της κλειδοθήκης και της εισόδου για εύκολη πρόσβαση!\n\nΕνημερώστε μας μόλις φτάσετε!',
+    photos: [
+      { id: 'p1', title: '🔑 Κλειδοθήκη (Lockbox)', url: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80' },
+      { id: 'p2', title: '🚪 Κεντρική Είσοδος', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80' }
+    ],
   },
   {
     id: 'rule-checkin-wifi',
@@ -59,6 +71,7 @@ const DEFAULT_RULES: AutomationRule[] = [
     icon: '📶',
     subject: 'Καλώς ήρθατε στο {{property_name}} & Στοιχεία Wi-Fi',
     body: 'Καλώς ήρθατε στο {{property_name}}! 🏠\n\n📶 Wi-Fi Δίκτυο: {{wifi_name}}\n🔑 Κωδικός Wi-Fi: {{wifi_password}}\n📱 Ψηφιακός Οδηγός Σπιτιού: {{guide_link}}\n\nΕυχόμαστε μια υπέροχη διαμονή!',
+    photos: [],
   },
   {
     id: 'rule-midstay-check',
@@ -71,6 +84,7 @@ const DEFAULT_RULES: AutomationRule[] = [
     icon: '☕',
     subject: 'Πώς είναι η διαμονή σας στο {{property_name}};',
     body: 'Καλημέρα {{guest_name}}! Ελπίζουμε να απολαμβάνετε τη διαμονή σας στο {{property_name}}. Ενημερώστε μας αν χρειάζεστε επιπλέον πετσέτες, προτάσεις για φαγητό ή οτιδήποτε άλλο!',
+    photos: [],
   },
   {
     id: 'rule-before-checkout',
@@ -83,6 +97,7 @@ const DEFAULT_RULES: AutomationRule[] = [
     icon: '🚪',
     subject: 'Πληροφορίες Αναχώρησης (Check-out): {{property_name}}',
     body: 'Γεια σας {{guest_name}}, σας υπενθυμίζουμε ότι το check-out είναι αύριο {{check_out}} έως τις {{check_out_time}}.\n\nΠαρακαλούμε:\n1. Κλείστε το A/C και τον θερμοσίφωνα\n2. Αφήστε τα κλειδιά στην κλειδοθήκη (κωδικός {{lockbox_code}})\n\nΣας ευχαριστούμε θερμά για τη φιλοξενία!',
+    photos: [],
   },
   {
     id: 'rule-after-checkout-review',
@@ -95,10 +110,20 @@ const DEFAULT_RULES: AutomationRule[] = [
     icon: '⭐',
     subject: 'Ευχαριστούμε για τη διαμονή σας! ⭐⭐⭐⭐⭐',
     body: 'Σας ευχαριστούμε πολύ που επιλέξατε το {{property_name}} για τη διαμονή σας! Ελπίζουμε να περάσατε υπέροχα.\n\nΑν μείνατε ευχαριστημένοι, μια θετική κριτική 5 αστέρων στην πλατφόρμα θα μας βοηθούσε απίστευτα. Καλό ταξίδι επιστροφής!',
+    photos: [],
   },
 ]
 
 const EMOJI_OPTIONS = ['💬', '🔑', '🏠', '📶', '☕', '🚪', '⭐', '🚗', '🏖️', '📍', '🎁', '⚠️', '💡', '🧹', '🏊‍♂️']
+
+const PHOTO_PRESETS = [
+  '🔑 Κλειδοθήκη (Lockbox)',
+  '🚪 Κεντρική Είσοδος / Πόρτα',
+  '🏢 Πρόσοψη Κτιρίου',
+  '🅿️ Θέση Πάρκινγκ',
+  '⚡ Πίνακας Ρεύματος & Θερμοσίφωνας',
+  '🛗 Ασανσέρ / Σκάλα',
+]
 
 const SMART_VARIABLES = [
   { label: 'Όνομα Επισκέπτη', tag: '{{guest_name}}' },
@@ -125,6 +150,12 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
   const [isNewRule, setIsNewRule] = useState(false)
   const [showProModal, setShowProModal] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState<string | null>(null)
+
+  // Photo management state in modal
+  const [photoTitleInput, setPhotoTitleInput] = useState(PHOTO_PRESETS[0])
+  const [photoUrlInput, setPhotoUrlInput] = useState('')
+  const [previewingPhoto, setPreviewingPhoto] = useState<RulePhoto | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isPro = isProUser(userEmail)
 
@@ -172,7 +203,9 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
       icon: '💬',
       subject: 'Ενημέρωση για το {{property_name}}',
       body: 'Γεια σας {{guest_name}}!\n\nΣας στέλνουμε χρήσιμες πληροφορίες για τη διαμονή σας στο {{property_name}}.\n\nWi-Fi: {{wifi_name}}\nΚωδικός: {{wifi_password}}\nLockbox: {{lockbox_code}}\n\nΕίμαστε στη διάθεσή σας!',
+      photos: [],
     })
+    setPhotoUrlInput('')
   }
 
   const handleEditClick = (rule: AutomationRule) => {
@@ -181,7 +214,8 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
       return
     }
     setIsNewRule(false)
-    setEditingRule(JSON.parse(JSON.stringify(rule)))
+    setEditingRule(JSON.parse(JSON.stringify({ ...rule, photos: rule.photos || [] })))
+    setPhotoUrlInput('')
   }
 
   const handleDeleteRule = (id: string, title: string) => {
@@ -222,6 +256,52 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
     })
   }
 
+  // Handle Photo File Upload
+  const handlePhotoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !editingRule) return
+
+    const reader = new FileReader()
+    reader.onload = (uploadEvent) => {
+      const dataUrl = uploadEvent.target?.result as string
+      if (dataUrl) {
+        const newPhoto: RulePhoto = {
+          id: `photo-${Date.now()}`,
+          title: photoTitleInput || 'Φωτογραφία Οδηγιών',
+          url: dataUrl,
+        }
+        setEditingRule({
+          ...editingRule,
+          photos: [...(editingRule.photos || []), newPhoto],
+        })
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Handle Photo URL Add
+  const handleAddPhotoUrl = () => {
+    if (!photoUrlInput.trim() || !editingRule) return
+    const newPhoto: RulePhoto = {
+      id: `photo-${Date.now()}`,
+      title: photoTitleInput || 'Φωτογραφία Οδηγιών',
+      url: photoUrlInput.trim(),
+    }
+    setEditingRule({
+      ...editingRule,
+      photos: [...(editingRule.photos || []), newPhoto],
+    })
+    setPhotoUrlInput('')
+  }
+
+  const handleRemovePhoto = (photoId: string) => {
+    if (!editingRule) return
+    setEditingRule({
+      ...editingRule,
+      photos: (editingRule.photos || []).filter(p => p.id !== photoId),
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
@@ -231,13 +311,13 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
           <div className="space-y-1.5 max-w-xl">
             <div className="inline-flex items-center gap-1.5 bg-blue-500/20 border border-blue-400/30 text-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
               <Zap size={12} className="text-amber-400" />
-              <span>Airbnb-Style Auto Scheduled Messages</span>
+              <span>Airbnb-Style Auto Scheduled Messages & Visual Guides</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-              Προσαρμοσμένα Αυτοματοποιημένα Μηνύματα
+              Αυτοματοποιημένα Μηνύματα & Φωτογραφίες Οδηγιών
             </h2>
             <p className="text-xs sm:text-sm text-blue-100/80 leading-relaxed">
-              Δημιουργήστε, επεξεργαστείτε και ρυθμίστε τους δικούς σας κανόνες ώστε τα μηνύματα να φεύγουν <strong>αυτόματα την ημέρα και ώρα που θέλετε</strong> σε κάθε επισκέπτη!
+              Ρυθμίστε κανόνες με <strong>φωτογραφίες κλειδοθήκης, πόρτας & εισόδου</strong> ώστε τα μηνύματα να φεύγουν αυτόματα την ημέρα και ώρα που θέλετε!
             </p>
           </div>
 
@@ -273,92 +353,133 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
 
       {/* Rules List */}
       <div className="grid grid-cols-1 gap-3.5">
-        {rules.map((rule, idx) => (
-          <div
-            key={rule.id}
-            className={`bg-white rounded-3xl p-5 sm:p-6 border transition-all shadow-sm hover:shadow-md ${
-              rule.enabled ? 'border-indigo-100 bg-white' : 'border-gray-200/80 bg-gray-50/70 opacity-75'
-            }`}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              {/* Left Title & Trigger Info */}
-              <div className="flex items-start gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-xl shrink-0 shadow-2xs">
-                  {rule.icon}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-extrabold text-gray-900 text-sm sm:text-base">{rule.title}</h3>
-                    <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-                      <Clock size={11} className="text-amber-600" />
-                      <span>{rule.sendTime === 'Άμεσα' ? 'Άμεση Αποστολή' : `Ώρα: ${rule.sendTime}`}</span>
-                    </span>
+        {rules.map((rule) => {
+          const hasPhotos = rule.photos && rule.photos.length > 0
+
+          return (
+            <div
+              key={rule.id}
+              className={`bg-white rounded-3xl p-5 sm:p-6 border transition-all shadow-sm hover:shadow-md ${
+                rule.enabled ? 'border-indigo-100 bg-white' : 'border-gray-200/80 bg-gray-50/70 opacity-75'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Left Title & Trigger Info */}
+                <div className="flex items-start gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-xl shrink-0 shadow-2xs">
+                    {rule.icon}
                   </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-extrabold text-gray-900 text-sm sm:text-base">{rule.title}</h3>
+                      <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                        <Clock size={11} className="text-amber-600" />
+                        <span>{rule.sendTime === 'Άμεσα' ? 'Άμεση Αποστολή' : `Ώρα: ${rule.sendTime}`}</span>
+                      </span>
+                      {hasPhotos && (
+                        <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-200 text-teal-800 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                          <ImageIcon size={11} className="text-teal-600" />
+                          <span>{rule.photos?.length} Φωτογραφίες</span>
+                        </span>
+                      )}
+                    </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mt-1 flex-wrap">
-                    <span className="bg-blue-50 text-blue-800 border border-blue-100 px-2 py-0.5 rounded-md font-semibold text-[11px]">
-                      {rule.triggerType === 'instant_booking' && '⚡ Κατά την ολοκλήρωση κράτησης'}
-                      {rule.triggerType === 'before_checkin' && `📅 ${rule.offsetDays === 0 ? 'Την ημέρα του' : `${rule.offsetDays} μέρα πριν το`} Check-in`}
-                      {rule.triggerType === 'checkin_day' && '📅 Την ημέρα του Check-in'}
-                      {rule.triggerType === 'mid_stay' && `☕ ${rule.offsetDays} ημέρα μετά την άφιξη`}
-                      {rule.triggerType === 'before_checkout' && `🚪 ${rule.offsetDays === 0 ? 'Την ημέρα του' : `${rule.offsetDays} μέρα πριν το`} Check-out`}
-                      {rule.triggerType === 'after_checkout' && '⭐ Μετά το Check-out'}
-                    </span>
-                    <span>•</span>
-                    <span className="text-[11px] text-indigo-700 font-bold">
-                      Κανάλια: Airbnb Chat, Booking.com, WhatsApp
-                    </span>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-1 flex-wrap">
+                      <span className="bg-blue-50 text-blue-800 border border-blue-100 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                        {rule.triggerType === 'instant_booking' && '⚡ Κατά την ολοκλήρωση κράτησης'}
+                        {rule.triggerType === 'before_checkin' && `📅 ${rule.offsetDays === 0 ? 'Την ημέρα του' : `${rule.offsetDays} μέρα πριν το`} Check-in`}
+                        {rule.triggerType === 'checkin_day' && '📅 Την ημέρα του Check-in'}
+                        {rule.triggerType === 'mid_stay' && `☕ ${rule.offsetDays} ημέρα μετά την άφιξη`}
+                        {rule.triggerType === 'before_checkout' && `🚪 ${rule.offsetDays === 0 ? 'Την ημέρα του' : `${rule.offsetDays} μέρα πριν το`} Check-out`}
+                        {rule.triggerType === 'after_checkout' && '⭐ Μετά το Check-out'}
+                      </span>
+                      <span>•</span>
+                      <span className="text-[11px] text-indigo-700 font-bold">
+                        Κανάλια: Airbnb Chat, Booking.com, WhatsApp
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right Controls: Toggle, Edit, Delete */}
-              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 pt-2 sm:pt-0">
-                <button
-                  type="button"
-                  onClick={() => handleEditClick(rule)}
-                  className="flex items-center gap-1 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl transition-colors"
-                  title="Επεξεργασία κειμένου & ώρας"
-                >
-                  <Edit3 size={13} />
-                  <span>Επεξεργασία</span>
-                </button>
+                {/* Right Controls: Toggle, Edit, Delete */}
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 pt-2 sm:pt-0">
+                  <button
+                    type="button"
+                    onClick={() => handleEditClick(rule)}
+                    className="flex items-center gap-1 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl transition-colors"
+                    title="Επεξεργασία κειμένου, ώρας & φωτογραφιών"
+                  >
+                    <Edit3 size={13} />
+                    <span>Επεξεργασία</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleDeleteRule(rule.id, rule.title)}
-                  className="text-gray-400 hover:text-red-600 p-2 rounded-xl hover:bg-red-50 transition-colors"
-                  title="Διαγραφή κανόνα"
-                >
-                  <Trash2 size={15} />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteRule(rule.id, rule.title)}
+                    className="text-gray-400 hover:text-red-600 p-2 rounded-xl hover:bg-red-50 transition-colors"
+                    title="Διαγραφή κανόνα"
+                  >
+                    <Trash2 size={15} />
+                  </button>
 
-                {/* ON/OFF Switch */}
-                <button
-                  type="button"
-                  onClick={() => toggleRule(rule.id)}
-                  className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ml-1 ${
-                    rule.enabled ? 'bg-emerald-600' : 'bg-gray-300'
-                  }`}
-                  title={rule.enabled ? 'Ενεργό' : 'Ανενεργό'}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      rule.enabled ? 'translate-x-6' : 'translate-x-0'
+                  {/* ON/OFF Switch */}
+                  <button
+                    type="button"
+                    onClick={() => toggleRule(rule.id)}
+                    className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ml-1 ${
+                      rule.enabled ? 'bg-emerald-600' : 'bg-gray-300'
                     }`}
-                  />
-                </button>
+                    title={rule.enabled ? 'Ενεργό' : 'Ανενεργό'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        rule.enabled ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Message Preview Snippet */}
-            <div className="mt-3.5 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-700 font-mono bg-gray-50/90 p-3.5 rounded-2xl border border-gray-200/70 leading-relaxed whitespace-pre-line">
-                {rule.body}
-              </p>
+              {/* Message Preview Snippet */}
+              <div className="mt-3.5 pt-3 border-t border-gray-100">
+                <p className="text-xs text-gray-700 font-mono bg-gray-50/90 p-3.5 rounded-2xl border border-gray-200/70 leading-relaxed whitespace-pre-line">
+                  {rule.body}
+                </p>
+              </div>
+
+              {/* Attached Photos Thumbnail Gallery */}
+              {hasPhotos && (
+                <div className="mt-3 pt-3 border-t border-gray-100/80">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-2">
+                    <ImageIcon size={14} className="text-teal-600" />
+                    <span>Συνημμένες Φωτογραφίες Οδηγιών ({rule.photos?.length}):</span>
+                  </div>
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1">
+                    {rule.photos?.map((photo) => (
+                      <div
+                        key={photo.id}
+                        onClick={() => setPreviewingPhoto(photo)}
+                        className="group relative cursor-pointer rounded-2xl overflow-hidden border border-gray-200 shadow-2xs hover:shadow-md transition-all shrink-0 w-36 bg-gray-50"
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.title}
+                          className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                        <div className="p-1.5 bg-white/95 text-[10px] font-bold text-gray-800 truncate text-center">
+                          {photo.title}
+                        </div>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <Eye size={18} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Edit / Create Rule Modal */}
@@ -368,7 +489,7 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
           onClick={() => setEditingRule(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150 border border-gray-100 max-h-[92vh] overflow-y-auto"
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150 border border-gray-100 max-h-[92vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
@@ -376,9 +497,9 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
                 <span className="text-2xl">{editingRule.icon}</span>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-lg">
-                    {isNewRule ? 'Δημιουργία Νέου Κανόνα Αυτοματισμού' : 'Επεξεργασία Κανόνα'}
+                    {isNewRule ? 'Δημιουργία Νέου Κανόνα Αυτοματισμού' : 'Επεξεργασία Κανόνα & Φωτογραφιών'}
                   </h3>
-                  <p className="text-xs text-gray-400">Προσαρμόστε τις συνθήκες αποστολής και το κείμενο</p>
+                  <p className="text-xs text-gray-400">Προσαρμόστε συνθήκες, φωτογραφίες εισόδου και κείμενο</p>
                 </div>
               </div>
               <button
@@ -485,6 +606,99 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
                 </div>
               </div>
 
+              {/* 📸 Visual Check-in Photos Uploader */}
+              <div className="bg-gradient-to-r from-teal-50/70 to-emerald-50/70 border border-teal-200/80 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
+                    <span className="font-extrabold text-teal-950 text-xs">
+                      📸 Φωτογραφίες Οδηγιών (Κλειδοθήκη, Πόρτα, Είσοδος, Πάρκινγκ):
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-teal-700 bg-white border border-teal-200 px-2 py-0.5 rounded-md font-bold">
+                    {editingRule.photos?.length || 0} Φωτογραφίες
+                  </span>
+                </div>
+
+                {/* Add Photo Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <div className="sm:col-span-4">
+                    <select
+                      value={photoTitleInput}
+                      onChange={e => setPhotoTitleInput(e.target.value)}
+                      className="w-full border border-teal-300 rounded-xl px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-teal-500 font-medium"
+                    >
+                      {PHOTO_PRESETS.map(p => <option key={p} value={p}>{p}</option>)}
+                      <option value="Άλλη Φωτογραφία">Άλλη Φωτογραφία</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-5 flex gap-1">
+                    <input
+                      value={photoUrlInput}
+                      onChange={e => setPhotoUrlInput(e.target.value)}
+                      placeholder="Επικόλληση URL ή ανέβασμα ➔"
+                      className="w-full border border-teal-300 rounded-xl px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3 flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 bg-white hover:bg-teal-50 text-teal-700 border border-teal-300 font-bold px-2 py-1.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                      title="Ανέβασμα από τη συσκευή σας"
+                    >
+                      <Upload size={12} />
+                      <span>Αρχείο</span>
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoFileUpload}
+                    />
+
+                    {photoUrlInput && (
+                      <button
+                        type="button"
+                        onClick={handleAddPhotoUrl}
+                        className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-colors shadow-2xs"
+                      >
+                        + URL
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Thumbnails of Added Photos */}
+                {(editingRule.photos && editingRule.photos.length > 0) && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-teal-200/60">
+                    {editingRule.photos.map((photo) => (
+                      <div key={photo.id} className="relative group bg-white rounded-xl p-1.5 border border-teal-200 shadow-2xs">
+                        <img
+                          src={photo.url}
+                          alt={photo.title}
+                          className="w-full h-18 object-cover rounded-lg"
+                        />
+                        <div className="text-[10px] font-bold text-gray-700 truncate mt-1 text-center">
+                          {photo.title}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(photo.id)}
+                          className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full shadow-md opacity-90 group-hover:opacity-100 transition-opacity"
+                          title="Αφαίρεση φωτογραφίας"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Clickable Smart Variable Chips */}
               <div>
                 <label className="font-bold text-gray-700 uppercase text-[10px] block mb-1.5 flex items-center justify-between">
@@ -509,7 +723,7 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
               <div>
                 <label className="font-bold text-gray-700 block mb-1">Κείμενο Μηνύματος (Template Body) *</label>
                 <textarea
-                  rows={8}
+                  rows={7}
                   required
                   value={editingRule.body}
                   onChange={e => setEditingRule({ ...editingRule, body: e.target.value })}
@@ -530,10 +744,35 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
                   type="submit"
                   className="px-6 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-colors"
                 >
-                  {isNewRule ? 'Δημιουργία Κανόνα' : 'Αποθήκευση Κανόνα'}
+                  {isNewRule ? 'Δημιουργία Κανόνα' : 'Αποθήκευση Κανόνα & Φωτογραφιών'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Photo Preview Modal */}
+      {previewingPhoto && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewingPhoto(null)}
+        >
+          <div className="relative max-w-xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl p-4 space-y-3 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span className="font-extrabold text-gray-900 text-sm">{previewingPhoto.title}</span>
+              <button
+                onClick={() => setPreviewingPhoto(null)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <img
+              src={previewingPhoto.url}
+              alt={previewingPhoto.title}
+              className="w-full max-h-[70vh] object-contain rounded-2xl"
+            />
           </div>
         </div>
       )}
@@ -543,7 +782,7 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
         isOpen={showProModal}
         onClose={() => setShowProModal(false)}
         featureTitle="Αυτοματοποιημένα Προγραμματισμένα Μηνύματα (Pro)"
-        featureDescription="Αναβαθμίστε στο πακέτο Pro για να δημιουργήσετε απεριόριστους δικούς σας αυτοματοποιημένους κανόνες μηνυμάτων σε συγκεκριμένες ώρες και μέρες!"
+        featureDescription="Αναβαθμίστε στο πακέτο Pro για να δημιουργήσετε απεριόριστους δικούς σας αυτοματοποιημένους κανόνες μηνυμάτων με φωτογραφίες οδηγιών σε συγκεκριμένες ώρες και μέρες!"
       />
     </div>
   )
