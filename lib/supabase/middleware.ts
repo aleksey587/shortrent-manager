@@ -29,6 +29,13 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  // Direct edge redirect for root / path
+  if (pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = user ? '/dashboard' : '/login'
+    return NextResponse.redirect(url)
+  }
+
   const isPublicRoute = 
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
@@ -38,10 +45,11 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/api') ||
     pathname === '/manifest.json' ||
     pathname === '/favicon.ico' ||
-    pathname.startsWith('/_next')
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/icon')
 
   // If user is not authenticated and trying to access protected dashboard route
-  if (!user && !isPublicRoute && pathname !== '/') {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
