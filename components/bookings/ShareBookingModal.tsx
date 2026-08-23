@@ -43,6 +43,11 @@ export default function ShareBookingModal({ booking, accountantEmail = '', isPro
   const cleaningFee = booking.cleaning_fee ?? 0
   const taxableRental = Math.max(0, totalPrice - cleaningFee)
 
+  const plLower = (booking.platform || '').toLowerCase()
+  const hostFeePercentage = plLower.includes('booking') ? 15 : (plLower.includes('airbnb') ? 3 : (plLower.includes('vrbo') ? 5 : 0))
+  const hostFeeAmount = Math.round(totalPrice * (hostFeePercentage / 100) * 100) / 100
+  const netBankPayout = Math.max(0, totalPrice - hostFeeAmount - cleaningFee)
+
   const formattedMessage = `📌 Στοιχεία Κράτησης για Δήλωση στην ΑΑΔΕ
 ------------------------------------
 🏠 Ακίνητο: ${booking.propertyName || 'Ακίνητο'}${booking.amaNumber ? ` (ΑΜΑ: ${booking.amaNumber})` : ''}
@@ -51,9 +56,11 @@ export default function ShareBookingModal({ booking, accountantEmail = '', isPro
 📅 Check-out: ${format(checkOutDate, 'dd/MM/yyyy')} (${booking.nights} διανυκτερεύσεις)
 💳 Πλατφόρμα: ${booking.platform}
 ------------------------------------
-💰 Φορολογητέο Μίσθωμα (Δήλωση ΑΑΔΕ): €${taxableRental.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+💵 Συνολική Είσπραξη (Gross): €${totalPrice.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+🏷️ Τέλος Οικοδεσπότη / Προμήθεια (${hostFeePercentage}%): €${hostFeeAmount.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
 🧹 Τέλος Καθαριότητας: €${cleaningFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
-💵 Συνολική Είσπραξη: €${totalPrice.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+🏦 Καθαρά στην Τράπεζα (Payout): €${netBankPayout.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
+💰 Φορολογητέο Μίσθωμα (Δήλωση ΑΑΔΕ): €${taxableRental.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
 🏨 Τέλος Κλιματικής Κρίσης (myAADE): €${climateFee.toLocaleString('el-GR', { minimumFractionDigits: 2 })}
 ⏰ Καταληκτική Προθεσμία Δήλωσης: ${format(aadeDeadline, 'dd/MM/yyyy')}
 ------------------------------------`
