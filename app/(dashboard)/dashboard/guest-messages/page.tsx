@@ -13,6 +13,7 @@ import { DEFAULT_GUEST_TEMPLATES, replaceTemplateVariables, MessageTemplate } fr
 import { openWhatsAppMessage } from '@/lib/utils'
 import { isProUser } from '@/lib/permissions'
 import ProFeatureModal from '@/components/ui/ProFeatureModal'
+import ScheduledRulesPanel from '@/components/guest-messages/ScheduledRulesPanel'
 
 interface Property {
   id: string
@@ -39,6 +40,7 @@ interface Booking {
 
 export default function GuestMessagesPage() {
   const supabase = createClient()
+  const [activeMainTab, setActiveMainTab] = useState<'dispatch' | 'scheduled'>('dispatch')
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [properties, setProperties] = useState<Property[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -368,13 +370,46 @@ export default function GuestMessagesPage() {
               language === 'en' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            <span>🇬🇧</span>
+            <span>🇺🇸</span>
             <span>English</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Main Tab Switcher */}
+      <div className="flex items-center gap-2 p-1.5 bg-gray-100/90 rounded-2xl border border-gray-200/80 max-w-md">
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('dispatch')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+            activeMainTab === 'dispatch'
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <MessageSquare size={15} />
+          <span>💬 Άμεση Αποστολή</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('scheduled')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+            activeMainTab === 'scheduled'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Clock size={15} className={activeMainTab === 'scheduled' ? 'text-amber-300' : 'text-amber-500'} />
+          <span>⚡ Αυτοματοποιημένα</span>
+        </button>
+      </div>
+
+      {/* Scheduled Automation Rules View */}
+      {activeMainTab === 'scheduled' ? (
+        <ScheduledRulesPanel userEmail={userEmail} />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Booking & Template Selector */}
         <div className="lg:col-span-5 space-y-5">
           {/* Booking Selector Card */}
@@ -713,6 +748,7 @@ export default function GuestMessagesPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Pro Upgrade Modal */}
       <ProFeatureModal
