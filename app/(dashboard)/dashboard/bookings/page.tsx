@@ -68,6 +68,7 @@ export default function BookingsPage() {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
   const [search, setSearch] = useState('')
   const [filterProperty, setFilterProperty] = useState('all')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [isProUser, setIsProUser] = useState(false)
 
   // Monthly rates cache: property_id -> year -> month -> price
@@ -81,7 +82,7 @@ export default function BookingsPage() {
     setLoading(true)
     const [{ data: props }, { data: books }, { data: { user } }] = await Promise.all([
       supabase.from('properties').select('id, name, color, ama_number, cleaning_fee').order('created_at'),
-      supabase.from('bookings').select('*').order('check_in', { ascending: false }),
+      supabase.from('bookings').select('*').order('check_in', { ascending: true }),
       supabase.auth.getUser(),
     ])
     setProperties(props ?? [])
@@ -233,17 +234,23 @@ export default function BookingsPage() {
     fetchData()
   }
 
-  const filtered = bookings.filter(b => {
-    if (filterProperty !== 'all' && b.property_id !== filterProperty) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return (
-        b.guest_name?.toLowerCase().includes(q) ||
-        b.platform.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
+  const filtered = bookings
+    .filter(b => {
+      if (filterProperty !== 'all' && b.property_id !== filterProperty) return false
+      if (search) {
+        const q = search.toLowerCase()
+        return (
+          b.guest_name?.toLowerCase().includes(q) ||
+          b.platform.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.check_in).getTime()
+      const timeB = new Date(b.check_in).getTime()
+      return sortOrder === 'asc' ? timeA - timeB : timeB - timeA
+    })
 
   const totalIncome = filtered.reduce((s, b) => s + (b.total_price ?? 0), 0)
 
@@ -508,6 +515,16 @@ export default function BookingsPage() {
           <option value="all">Όλα τα ακίνητα</option>
           {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+
+        <button
+          type="button"
+          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 transition-colors shadow-2xs"
+          title="Αλλαγή σειράς εμφάνισης (Πρόσφατες / Μελλοντικές)"
+        >
+          <span>📅 Σειρά:</span>
+          <span className="text-blue-600">{sortOrder === 'asc' ? 'Πιο κοντινές πρώτα ↑' : 'Πιο μελλοντικές πρώτα ↓'}</span>
+        </button>
       </div>
 
       {/* Add Booking Modal */}
@@ -663,7 +680,17 @@ export default function BookingsPage() {
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ακίνητο</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Επισκέπτης</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-in</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <button
+                        type="button"
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="inline-flex items-center gap-1 text-gray-700 hover:text-blue-600 font-bold transition-colors"
+                        title="Κλικ για αντιστροφή σειράς"
+                      >
+                        <span>Check-in</span>
+                        <span className="text-blue-600 font-black">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      </button>
+                    </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-out</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Νύχτες</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">€/Νύχτα</th>
