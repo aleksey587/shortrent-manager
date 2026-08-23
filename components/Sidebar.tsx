@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils'
 import SupportModal from '@/components/SupportModal'
 import InstallAppModal from '@/components/InstallAppModal'
 import WhatsNewModal from '@/components/WhatsNewModal'
+import ThemeCustomizerModal from '@/components/ThemeCustomizerModal'
 import { isSuperAdmin, getUserSubscription, isProUser, getUserTier } from '@/lib/permissions'
 import { useLanguage } from '@/lib/languageContext'
 
@@ -89,26 +90,30 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Language Switcher Button in Sidebar Header */}
-        <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
-          <button
-            onClick={() => setLanguage('el')}
-            className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-              language === 'el' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
-            }`}
-            title="Ελληνικά"
-          >
-            🇬🇷
-          </button>
-          <button
-            onClick={() => setLanguage('en')}
-            className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
-              language === 'en' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500 hover:text-gray-900'
-            }`}
-            title="English"
-          >
-            🇬🇧
-          </button>
+        {/* Theme Customizer & Language Switcher Group in Sidebar Header */}
+        <div className="flex items-center gap-1.5">
+          <ThemeCustomizerModal />
+
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setLanguage('el')}
+              className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                language === 'el' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-2xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+              }`}
+              title="Ελληνικά"
+            >
+              🇬🇷
+            </button>
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                language === 'en' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-2xs' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+              }`}
+              title="English"
+            >
+              🇬🇧
+            </button>
+          </div>
         </div>
       </div>
 
@@ -201,13 +206,16 @@ export default function Sidebar() {
           <span className="text-xl">🏠</span>
           <span className="font-bold text-gray-900 text-base">GreekHost</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Theme Switcher in Mobile Topbar */}
+          <ThemeCustomizerModal />
+
           {/* Language Switcher in Mobile Topbar */}
-          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setLanguage('el')}
               className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold ${
-                language === 'el' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500'
+                language === 'el' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-2xs' : 'text-gray-500'
               }`}
             >
               🇬🇷
@@ -215,7 +223,7 @@ export default function Sidebar() {
             <button
               onClick={() => setLanguage('en')}
               className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold ${
-                language === 'en' ? 'bg-white text-blue-700 shadow-2xs' : 'text-gray-500'
+                language === 'en' ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-2xs' : 'text-gray-500'
               }`}
             >
               🇬🇧

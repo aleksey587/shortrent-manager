@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { LanguageProvider } from '@/lib/languageContext'
+import { ThemeProvider } from '@/lib/themeContext'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -16,11 +17,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="el">
+    <html lang="el" suppressHydrationWarning>
       <body className="bg-gray-50 text-gray-900 antialiased">
-        <LanguageProvider>
-          {children}
-        </LanguageProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
+        </ThemeProvider>
         <Analytics />
         <SpeedInsights />
       </body>

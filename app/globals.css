@@ -6,18 +6,181 @@
 }
 
 body {
-  background-color: #f9fafb;
-  color: #111827;
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Force all form inputs to always have clear black text and white background on mobile & desktop */
-input, select, textarea {
+/* Force standard input styling in light mode */
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea {
   color: #111827 !important;
   background-color: #ffffff !important;
 }
 
-input::placeholder, textarea::placeholder {
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
   color: #9ca3af !important;
+}
+
+/* =========================================
+   🌙 DARK MODE UNIVERSAL STYLING
+   ========================================= */
+
+.dark {
+  color-scheme: dark;
+  --foreground: #f8fafc;
+}
+
+/* Default Midnight Dark Background */
+.dark body,
+.dark main {
+  background-color: #080d1a !important;
+  color: #f8fafc !important;
+}
+
+/* Dark Card Backgrounds */
+.dark .bg-white {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #090e1d !important;
+  color: #f1f5f9 !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #1a233a !important;
+  color: #f8fafc !important;
+}
+
+.dark .bg-gray-200 {
+  background-color: #273552 !important;
+}
+
+/* Dark Text Colors */
+.dark .text-gray-900 { color: #f8fafc !important; }
+.dark .text-gray-800 { color: #f1f5f9 !important; }
+.dark .text-gray-700 { color: #e2e8f0 !important; }
+.dark .text-gray-600 { color: #cbd5e1 !important; }
+.dark .text-gray-500 { color: #94a3b8 !important; }
+.dark .text-gray-400 { color: #64748b !important; }
+
+/* Dark Borders */
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: #1e293b !important;
+}
+
+/* Dark Sidebar & Mobile Bars */
+.dark aside {
+  background-color: #060913 !important;
+  border-color: #151d30 !important;
+}
+
+.dark .lg\:hidden {
+  border-color: #1e293b !important;
+}
+
+/* Dark Inputs, Selects & Textareas */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0a0f1d !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Dark Accent Cards (Blue/Teal/Purple tints) */
+.dark .bg-blue-50 {
+  background-color: #0e1e38 !important;
+  color: #93c5fd !important;
+  border-color: #1e3a8a !important;
+}
+
+.dark .bg-teal-50 {
+  background-color: #062222 !important;
+  color: #5eead4 !important;
+  border-color: #115e59 !important;
+}
+
+.dark .bg-purple-50 {
+  background-color: #1f1438 !important;
+  color: #d8b4fe !important;
+  border-color: #581c87 !important;
+}
+
+.dark .bg-amber-50 {
+  background-color: #261b0c !important;
+  color: #fde047 !important;
+  border-color: #78350f !important;
+}
+
+/* =========================================
+   🎨 CUSTOM BACKGROUND THEMES (DARK)
+   ========================================= */
+
+/* 1. OLED Pure Black */
+.dark.theme-oled body,
+.dark.theme-oled main,
+.dark.theme-oled aside {
+  background-color: #000000 !important;
+}
+.dark.theme-oled .bg-white {
+  background-color: #0a0a0a !important;
+  border-color: #1f1f1f !important;
+}
+.dark.theme-oled .bg-gray-50,
+.dark.theme-oled input,
+.dark.theme-oled select,
+.dark.theme-oled textarea {
+  background-color: #050505 !important;
+  border-color: #1f1f1f !important;
+}
+
+/* 2. Emerald Forest */
+.dark.theme-emerald body,
+.dark.theme-emerald main,
+.dark.theme-emerald aside {
+  background-color: #041210 !important;
+}
+.dark.theme-emerald .bg-white {
+  background-color: #08211d !important;
+  border-color: #123d37 !important;
+}
+.dark.theme-emerald .bg-gray-50,
+.dark.theme-emerald input,
+.dark.theme-emerald select,
+.dark.theme-emerald textarea {
+  background-color: #051916 !important;
+  border-color: #123d37 !important;
+}
+
+/* 3. Slate Tech */
+.dark.theme-slate body,
+.dark.theme-slate main,
+.dark.theme-slate aside {
+  background-color: #0f172a !important;
+}
+.dark.theme-slate .bg-white {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+.dark.theme-slate .bg-gray-50,
+.dark.theme-slate input,
+.dark.theme-slate select,
+.dark.theme-slate textarea {
+  background-color: #131d31 !important;
+  border-color: #334155 !important;
 }
