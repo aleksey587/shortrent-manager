@@ -267,21 +267,36 @@ export default function CalendarPage() {
             {/* Calendar grid cells */}
             <div className="grid grid-cols-7">
               {calendarDays.map((day, idx) => {
-                const dayBookings = getBookingsForDay(day)
                 const isCurrentMonth = isSameMonth(day, currentDate)
                 const isCurrentDay = isToday(day)
                 const dayStr = format(day, 'yyyy-MM-dd')
                 const isFirstDayOfWeek = idx % 7 === 0
                 const isLastDayOfWeek = idx % 7 === 6
 
-                // Check for turnarounds on this day
-                const hasTurnaround = properties.some(p => turnarounds.has(`${p.id}:${dayStr}`))
+                // Separate check-ins, check-outs, and full-day ongoing stays for this day
+                const dayCheckins = filteredBookings.filter(b => isSameDay(parseISO(b.check_in), day))
+                const dayCheckouts = filteredBookings.filter(b => isSameDay(parseISO(b.check_out), day))
+                const dayOngoings = filteredBookings.filter(b => {
+                  const ci = parseISO(b.check_in)
+                  const co = parseISO(b.check_out)
+                  return day > ci && day < co
+                })
+
+                const isTurnaround = dayCheckouts.length > 0 && dayCheckins.length > 0
+                const hasAnyBooking = dayCheckins.length > 0 || dayCheckouts.length > 0 || dayOngoings.length > 0
                 const seasonalPrice = getSeasonalRate(day)
+
+                const getPlatformBg = (platform: string) => {
+                  if (platform === 'airbnb') return 'bg-red-500 hover:bg-red-600 text-white'
+                  if (platform === 'booking') return 'bg-blue-600 hover:bg-blue-700 text-white'
+                  if (platform === 'vrbo') return 'bg-teal-600 hover:bg-teal-700 text-white'
+                  return 'bg-purple-600 hover:bg-purple-700 text-white'
+                }
 
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[105px] sm:min-h-[115px] p-1.5 border-b border-r border-gray-100 flex flex-col justify-between relative ${
+                    className={`min-h-[105px] sm:min-h-[115px] p-1.5 border-b border-r border-gray-100 flex flex-col justify-between relative overflow-hidden ${
                       !isCurrentMonth ? 'bg-gray-50/40 text-gray-300' : 'bg-white'
                     } ${idx % 7 === 6 ? 'border-r-0' : ''}`}
                   >
@@ -296,70 +311,115 @@ export default function CalendarPage() {
                         {format(day, 'd')}
                       </span>
 
-                      {hasTurnaround && (
-                        <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-extrabold uppercase" title="Same-Day Turnaround">
-                          ⚠️
+                      {isTurnaround && (
+                        <span className="text-[9px] bg-amber-100 text-amber-900 border border-amber-300 px-1 py-0.2 rounded font-extrabold flex items-center gap-0.5" title="Same-Day Turnaround: Αναχώρηση & Άφιξη!">
+                          <span>⚡</span>
+                          <span className="hidden sm:inline">Turnaround</span>
                         </span>
                       )}
                     </div>
 
-                    {/* Bookings rendered as Continuous Horizontal Bars across days */}
-                    {dayBookings.length > 0 ? (
+                    {/* Bookings rendering: Full bar or 50/50 Split on Turnaround */}
+                    {hasAnyBooking ? (
                       <div className="space-y-1.5 my-auto z-2">
-                        {dayBookings.map(b => {
-                          const prop = properties.find(p => p.id === b.property_id)
-                          const checkInDate = parseISO(b.check_in)
-                          const checkOutDate = parseISO(b.check_out)
-                          
-                          const isCheckInDay = isSameDay(checkInDate, day)
-                          const isCheckOutDay = isSameDay(checkOutDate, day)
-                          const isLastStayDay = isSameDay(addDays(checkOutDate, -1), day)
+                        {/* CASE 1: Turnaround Day (Same Day Checkout & Checkin) -> 50% / 50% Split */}
+                        {isTurnaround ? (
+                          <div className="flex items-center w-full h-7 -mx-1.5">
+                            {/* Left Half: Departing Guest (Checkout morning) */}
+                            {dayCheckouts.slice(0, 1).map(b => (
+                              <div
+                                key={`out-${b.id}`}
+                                onClick={() => setSelectedBooking(b)}
+                                className={`w-1/2 h-full flex items-center justify-between px-1.5 text-[10px] font-bold shadow-xs cursor-pointer transition-all border-r border-white/30 ${getPlatformBg(b.platform)}`}
+                                title={`Αναχώρηση (Out): ${b.guest_name || 'Επισκέπτης'}`}
+                              >
+                                <span className="truncate leading-none">{b.guest_name || 'Out'}</span>
+                                <span className="text-[8px] opacity-80 shrink-0">⇥</span>
+                              </div>
+                            ))}
 
-                          const isStart = isCheckInDay || isFirstDayOfWeek
-                          const isEnd = isLastStayDay || isLastDayOfWeek
+                            {/* Right Half: Arriving Guest (Checkin afternoon) */}
+                            {dayCheckins.slice(0, 1).map(b => (
+                              <div
+                                key={`in-${b.id}`}
+                                onClick={() => setSelectedBooking(b)}
+                                className={`w-1/2 h-full flex items-center gap-1 px-1.5 text-[10px] font-bold shadow-xs cursor-pointer transition-all ${getPlatformBg(b.platform)}`}
+                                title={`Άφιξη (In): ${b.guest_name || 'Επισκέπτης'}`}
+                              >
+                                <span className="text-[8px] opacity-80 shrink-0">↦</span>
+                                <span className="truncate leading-none">{b.guest_name || 'In'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          /* CASE 2: Single Check-in, Check-out or Ongoing Full Day */
+                          <>
+                            {/* Checkouts without same-day checkin (Occupy left half of cell) */}
+                            {dayCheckouts.map(b => (
+                              <div
+                                key={`co-${b.id}`}
+                                onClick={() => setSelectedBooking(b)}
+                                className={`cursor-pointer h-7 w-1/2 -ml-1.5 pr-2 pl-1.5 rounded-r-lg flex items-center justify-between text-[10px] font-bold shadow-xs transition-all ${getPlatformBg(b.platform)}`}
+                                title={`Αναχώρηση (Check-out): ${b.guest_name || 'Επισκέπτης'}`}
+                              >
+                                <span className="truncate leading-none">{b.guest_name || 'Out'}</span>
+                                <span className="text-[8px] opacity-80 shrink-0">⇥</span>
+                              </div>
+                            ))}
 
-                          // Platform theme colors
-                          const isAirbnb = b.platform === 'airbnb'
-                          const isBooking = b.platform === 'booking'
-                          const isVrbo = b.platform === 'vrbo'
+                            {/* Checkins without same-day checkout (Starts with rounded left, spans right) */}
+                            {dayCheckins.map(b => {
+                              const checkOutDate = parseISO(b.check_out)
+                              const is1Night = differenceInDays(checkOutDate, parseISO(b.check_in)) === 1
+                              return (
+                                <div
+                                  key={`ci-${b.id}`}
+                                  onClick={() => setSelectedBooking(b)}
+                                  className={`cursor-pointer h-7 flex items-center gap-1 text-[11px] font-bold shadow-xs transition-all ${getPlatformBg(b.platform)} ${
+                                    isLastDayOfWeek
+                                      ? 'rounded-lg mx-0.5 px-2'
+                                      : 'rounded-l-lg -mr-1.5 pl-2 pr-1'
+                                  }`}
+                                  title={`Άφιξη (Check-in): ${b.guest_name || 'Επισκέπτης'}`}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                                  <span className="truncate leading-none">{b.guest_name || 'Επισκέπτης'}</span>
+                                  {b.nights && (
+                                    <span className="text-[9px] opacity-85 font-normal shrink-0">
+                                      ({b.nights}ν)
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
 
-                          const barBg = isAirbnb
-                            ? 'bg-red-500 hover:bg-red-600 text-white'
-                            : isBooking
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                            : isVrbo
-                            ? 'bg-teal-600 hover:bg-teal-700 text-white'
-                            : 'bg-purple-600 hover:bg-purple-700 text-white'
-
-                          return (
-                            <div
-                              key={b.id}
-                              onClick={() => setSelectedBooking(b)}
-                              className={`cursor-pointer h-7 flex items-center gap-1 text-[11px] font-bold shadow-xs transition-all ${barBg} ${
-                                isStart && isEnd
-                                  ? 'rounded-lg mx-0.5 px-2'
-                                  : isStart
-                                  ? 'rounded-l-lg -mr-1.5 pl-2 pr-1'
-                                  : isEnd
-                                  ? 'rounded-r-lg -ml-1.5 pr-2 pl-1'
-                                  : 'rounded-none -mx-1.5 px-1'
-                              }`}
-                              title={`${b.guest_name || 'Επισκέπτης'} (${format(checkInDate, 'dd/MM')} - ${format(checkOutDate, 'dd/MM')})`}
-                            >
-                              {isStart && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                              )}
-                              <span className="truncate leading-none">
-                                {isStart ? (b.guest_name || 'Επισκέπτης') : isFirstDayOfWeek ? (b.guest_name || 'Επισκέπτης') : ''}
-                              </span>
-                              {isStart && b.nights && (
-                                <span className="text-[9px] opacity-85 font-normal shrink-0">
-                                  ({b.nights}ν)
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })}
+                            {/* Full-day Ongoing Stays (Middle of booking) */}
+                            {dayOngoings.map(b => {
+                              return (
+                                <div
+                                  key={`stay-${b.id}`}
+                                  onClick={() => setSelectedBooking(b)}
+                                  className={`cursor-pointer h-7 flex items-center gap-1 text-[11px] font-bold shadow-xs transition-all ${getPlatformBg(b.platform)} ${
+                                    isFirstDayOfWeek && isLastDayOfWeek
+                                      ? 'rounded-lg mx-0.5 px-2'
+                                      : isFirstDayOfWeek
+                                      ? 'rounded-l-lg -mr-1.5 pl-2 pr-1'
+                                      : isLastDayOfWeek
+                                      ? 'rounded-r-lg -ml-1.5 pr-2 pl-1'
+                                      : 'rounded-none -mx-1.5 px-1'
+                                  }`}
+                                  title={`${b.guest_name || 'Επισκέπτης'} (Διαμονή)`}
+                                >
+                                  {isFirstDayOfWeek && (
+                                    <span className="truncate leading-none pl-1">
+                                      {b.guest_name || 'Επισκέπτης'}
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </>
+                        )}
                       </div>
                     ) : (
                       /* Empty Day: Show Daily Seasonal Price */
