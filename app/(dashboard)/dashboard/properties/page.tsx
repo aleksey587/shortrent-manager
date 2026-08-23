@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Plus, Trash2, RefreshCw, Home, ChevronDown, ChevronUp,
-  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock, Sparkles, Wand2
+  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock, Sparkles, Wand2, Zap
 } from 'lucide-react'
 import MonthlyPricingPanel from '@/components/properties/MonthlyPricingPanel'
+import ChannelConnectModal from '@/components/properties/ChannelConnectModal'
 import { isSuperAdmin, isProUser, getUserTier, getMaxPropertiesAllowed } from '@/lib/permissions'
 
 const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
@@ -67,6 +68,7 @@ export default function PropertiesPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [showAddProperty, setShowAddProperty] = useState(false)
   const [editingProp, setEditingProp] = useState<Property | null>(null)
+  const [selectedChannelProp, setSelectedChannelProp] = useState<Property | null>(null)
   const [showAddIcal, setShowAddIcal] = useState<string | null>(null)
   const [syncing, setSyncing] = useState<string | null>(null)
   const [expandedIcal, setExpandedIcal] = useState<string | null>(null)
@@ -698,6 +700,15 @@ export default function PropertiesPage() {
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
+                      onClick={() => setSelectedChannelProp(prop)}
+                      className="flex items-center gap-1 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                      title="Σύνδεση με Airbnb & Booking.com"
+                    >
+                      <Zap size={12} className="text-emerald-600" />
+                      <span>⚡ Σύνδεση OTA Κανάλια</span>
+                    </button>
+
+                    <button
                       onClick={() => openEditModal(prop)}
                       className="text-gray-400 hover:text-blue-600 p-1.5 rounded-xl hover:bg-blue-50 transition-colors"
                       title="Επεξεργασία"
@@ -824,6 +835,16 @@ export default function PropertiesPage() {
             )
           })}
         </div>
+      )}
+
+      {/* Channel Connect 2-Way Modal */}
+      {selectedChannelProp && (
+        <ChannelConnectModal
+          property={selectedChannelProp}
+          userEmail={userEmail}
+          isOpen={true}
+          onClose={() => setSelectedChannelProp(null)}
+        />
       )}
     </div>
   )
