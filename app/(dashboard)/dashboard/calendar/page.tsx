@@ -100,6 +100,14 @@ export default function CalendarPage() {
     return map
   }, [filteredBookings])
 
+  // Calculate seasonal pricing per day
+  const getSeasonalRate = (day: Date): number => {
+    const month = day.getMonth() + 1 // 1-12
+    if (month >= 6 && month <= 9) return 125.0 // Summer
+    if (month === 4 || month === 5 || month === 10) return 85.0 // Spring/Autumn
+    return 70.0 // Winter
+  }
+
   // Generate calendar grid
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -143,7 +151,7 @@ export default function CalendarPage() {
             Ενοποιημένο Ημερολόγιο
           </h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            Προβολή όλων των κρατήσεων από Airbnb, Booking.com & VRBO με Same-Day Turnaround alerts.
+            Προβολή όλων των κρατήσεων από Airbnb, Booking.com & VRBO με συνεχόμενες μπάρες και τιμές ανά ημέρα.
           </p>
         </div>
 
@@ -244,7 +252,7 @@ export default function CalendarPage() {
           </button>
         </div>
 
-        {/* VIEW 1: MONTH GRID VIEW */}
+        {/* VIEW 1: MONTH GRID VIEW WITH CONTINUOUS MULTI-DAY BARS & RATES */}
         {viewMode === 'grid' && (
           <div>
             {/* Weekday labels */}
@@ -263,18 +271,21 @@ export default function CalendarPage() {
                 const isCurrentMonth = isSameMonth(day, currentDate)
                 const isCurrentDay = isToday(day)
                 const dayStr = format(day, 'yyyy-MM-dd')
+                const isFirstDayOfWeek = idx % 7 === 0
+                const isLastDayOfWeek = idx % 7 === 6
 
                 // Check for turnarounds on this day
                 const hasTurnaround = properties.some(p => turnarounds.has(`${p.id}:${dayStr}`))
+                const seasonalPrice = getSeasonalRate(day)
 
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[100px] sm:min-h-[110px] p-1.5 border-b border-r border-gray-100 flex flex-col justify-between ${
+                    className={`min-h-[105px] sm:min-h-[115px] p-1.5 border-b border-r border-gray-100 flex flex-col justify-between relative ${
                       !isCurrentMonth ? 'bg-gray-50/40 text-gray-300' : 'bg-white'
                     } ${idx % 7 === 6 ? 'border-r-0' : ''}`}
                   >
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-1 z-1">
                       <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
                         isCurrentDay
                           ? 'bg-blue-600 text-white shadow-xs'
@@ -292,33 +303,77 @@ export default function CalendarPage() {
                       )}
                     </div>
 
-                    {/* Bookings pills on this day */}
-                    <div className="space-y-1 overflow-y-auto max-h-[75px]">
-                      {dayBookings.map(b => {
-                        const prop = properties.find(p => p.id === b.property_id)
-                        const platInfo = PLATFORM_INFO[b.platform] || PLATFORM_INFO.other
-                        const isStart = isSameDay(parseISO(b.check_in), day)
+                    {/* Bookings rendered as Continuous Horizontal Bars across days */}
+                    {dayBookings.length > 0 ? (
+                      <div className="space-y-1.5 my-auto z-2">
+                        {dayBookings.map(b => {
+                          const prop = properties.find(p => p.id === b.property_id)
+                          const checkInDate = parseISO(b.check_in)
+                          const checkOutDate = parseISO(b.check_out)
+                          
+                          const isCheckInDay = isSameDay(checkInDate, day)
+                          const isCheckOutDay = isSameDay(checkOutDate, day)
+                          const isLastStayDay = isSameDay(addDays(checkOutDate, -1), day)
 
-                        return (
-                          <div
-                            key={b.id}
-                            onClick={() => setSelectedBooking(b)}
-                            className="cursor-pointer px-2 py-1 rounded-lg text-[10px] font-bold truncate transition-transform hover:scale-[1.02] shadow-2xs border"
-                            style={{
-                              backgroundColor: `${prop?.color || '#3b82f6'}15`,
-                              borderColor: `${prop?.color || '#3b82f6'}40`,
-                              color: '#1e293b'
-                            }}
-                          >
-                            <div className="flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: prop?.color }} />
-                              <span className="truncate">{b.guest_name || 'Επισκέπτης'}</span>
-                              {isStart && <span className="text-[9px] text-blue-600 font-extrabold">· In</span>}
+                          const isStart = isCheckInDay || isFirstDayOfWeek
+                          const isEnd = isLastStayDay || isLastDayOfWeek
+
+                          // Platform theme colors
+                          const isAirbnb = b.platform === 'airbnb'
+                          const isBooking = b.platform === 'booking'
+                          const isVrbo = b.platform === 'vrbo'
+
+                          const barBg = isAirbnb
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                            : isBooking
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                            : isVrbo
+                            ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                            : 'bg-purple-600 hover:bg-purple-700 text-white'
+
+                          return (
+                            <div
+                              key={b.id}
+                              onClick={() => setSelectedBooking(b)}
+                              className={`cursor-pointer h-7 flex items-center gap-1 text-[11px] font-bold shadow-xs transition-all ${barBg} ${
+                                isStart && isEnd
+                                  ? 'rounded-lg mx-0.5 px-2'
+                                  : isStart
+                                  ? 'rounded-l-lg -mr-1.5 pl-2 pr-1'
+                                  : isEnd
+                                  ? 'rounded-r-lg -ml-1.5 pr-2 pl-1'
+                                  : 'rounded-none -mx-1.5 px-1'
+                              }`}
+                              title={`${b.guest_name || 'Επισκέπτης'} (${format(checkInDate, 'dd/MM')} - ${format(checkOutDate, 'dd/MM')})`}
+                            >
+                              {isStart && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                              )}
+                              <span className="truncate leading-none">
+                                {isStart ? (b.guest_name || 'Επισκέπτης') : isFirstDayOfWeek ? (b.guest_name || 'Επισκέπτης') : ''}
+                              </span>
+                              {isStart && b.nights && (
+                                <span className="text-[9px] opacity-85 font-normal shrink-0">
+                                  ({b.nights}ν)
+                                </span>
+                              )}
                             </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      /* Empty Day: Show Daily Seasonal Price */
+                      <div className="mt-auto pt-2 flex items-center justify-between text-right">
+                        <span className="text-[9px] font-medium text-gray-300">
+                          {isCurrentMonth ? 'Κενό' : ''}
+                        </span>
+                        {isCurrentMonth && (
+                          <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
+                            €{seasonalPrice}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
