@@ -22,6 +22,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import SupportModal from '@/components/SupportModal'
 import InstallAppModal from '@/components/InstallAppModal'
+import WhatsNewModal from '@/components/WhatsNewModal'
 import { isSuperAdmin, getUserSubscription, isProUser, getUserTier } from '@/lib/permissions'
 
 const navItems = [
@@ -135,6 +136,9 @@ export default function Sidebar() {
             <p className="text-[11px] text-blue-700 mt-0.5">Από 4,08 € / μήνα</p>
           </Link>
         )}
+
+        {/* What's New & Upcoming Roadmap Modal */}
+        <WhatsNewModal />
 
         {/* Install App Trigger Button */}
         <InstallAppModal />
