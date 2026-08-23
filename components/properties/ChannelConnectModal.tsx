@@ -58,6 +58,10 @@ export default function ChannelConnectModal({ property, userEmail, isOpen, onClo
       if (saved) {
         setConnectedChannels(JSON.parse(saved))
       }
+      const savedHotelId = localStorage.getItem(`greekhost_booking_hotel_id_${property.id}`)
+      if (savedHotelId) {
+        setBookingHotelId(savedHotelId)
+      }
     } catch {}
   }, [property.id])
 
@@ -104,6 +108,7 @@ export default function ChannelConnectModal({ property, userEmail, isOpen, onClo
       setConnectedChannels(updated)
       try {
         localStorage.setItem(`greekhost_channels_${property.id}`, JSON.stringify(updated))
+        localStorage.setItem(`greekhost_booking_hotel_id_${property.id}`, bookingHotelId.trim())
       } catch {}
       setConnectingChannel(null)
       setStatusMessage('✅ Το Booking.com συνδέθηκε επιτυχώς με το Channex Channel Manager!')
