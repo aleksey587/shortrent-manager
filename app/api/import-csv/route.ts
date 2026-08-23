@@ -129,12 +129,12 @@ function parseCsv(csvText: string, propertyId: string, forcedPlatform?: string) 
     return -1
   }
 
-  const checkInIdx = findCol(['start date', 'check-in', 'check in', 'έναρξη', 'ημερομηνία έναρξης', 'άφιξη'])
-  const checkOutIdx = findCol(['end date', 'check-out', 'check out', 'λήξη', 'ημερομηνία λήξης', 'αναχώρηση'])
-  const guestIdx = findCol(['guest', 'guest name', 'επισκέπτης', 'όνομα'])
-  const amountIdx = findCol(['amount', 'paid out', 'gross earnings', 'total price', 'ποσό', 'έσοδα', 'σύνολο', 'τιμή'])
-  const codeIdx = findCol(['confirmation code', 'code', 'book number', 'κωδικός', 'αριθμός κράτησης'])
-  const nightsIdx = findCol(['nights', 'νύχτες', 'διανυκτερεύσεις'])
+  const checkInIdx = findCol(['start date', 'check-in', 'check in', 'έναρξη', 'ημερομηνία έναρξης', 'άφιξη', 'start'])
+  const checkOutIdx = findCol(['end date', 'check-out', 'check out', 'λήξη', 'ημερομηνία λήξης', 'αναχώρηση', 'end'])
+  const guestIdx = findCol(['guest name', 'guest', 'επισκέπτης', 'όνομα επισκέπτη', 'όνομα', 'contact', 'επαφή'])
+  const amountIdx = findCol(['earnings', 'amount', 'paid out', 'gross earnings', 'total price', 'ποσό', 'έσοδα', 'σύνολο', 'τιμή', 'κέρδη', 'καθαρά κέρδη'])
+  const codeIdx = findCol(['confirmation code', 'code', 'book number', 'κωδικός', 'κωδικός επιβεβαίωσης', 'αριθμός κράτησης'])
+  const nightsIdx = findCol(['# of nights', 'nights', 'νύχτες', 'διανυκτερεύσεις'])
 
   const results: any[] = []
 
