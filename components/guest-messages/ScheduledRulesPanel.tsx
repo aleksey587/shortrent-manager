@@ -156,8 +156,20 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
   const [photoUrlInput, setPhotoUrlInput] = useState('')
   const [previewingPhoto, setPreviewingPhoto] = useState<RulePhoto | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [currentEmail, setCurrentEmail] = useState<string | null>(userEmail ?? null)
+  const isPro = isProUser(currentEmail)
 
-  const isPro = isProUser(userEmail)
+  useEffect(() => {
+    if (userEmail) {
+      setCurrentEmail(userEmail)
+    } else {
+      import('@/lib/supabase/client').then(({ createClient }) => {
+        createClient().auth.getUser().then(({ data: { user } }) => {
+          if (user?.email) setCurrentEmail(user.email)
+        })
+      })
+    }
+  }, [userEmail])
 
   useEffect(() => {
     try {

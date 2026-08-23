@@ -749,6 +749,7 @@ export default function PropertiesPage() {
                   propertyId={prop.id}
                   propertyName={prop.name}
                   initialCleaningFee={prop.cleaning_fee}
+                  userEmail={userEmail}
                   onPropertyUpdated={fetchData}
                 />
 

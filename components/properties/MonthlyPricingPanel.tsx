@@ -25,12 +25,13 @@ interface Props {
   propertyId: string
   propertyName: string
   initialCleaningFee?: number | null
+  userEmail?: string | null
   onPropertyUpdated?: () => void
 }
 
-export default function MonthlyPricingPanel({ propertyId, propertyName, initialCleaningFee, onPropertyUpdated }: Props) {
+export default function MonthlyPricingPanel({ propertyId, propertyName, initialCleaningFee, userEmail: initialEmail, onPropertyUpdated }: Props) {
   const supabase = createClient()
-  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(initialEmail ?? null)
   const [open, setOpen] = useState(false)
   const [year, setYear] = useState(new Date().getFullYear())
   const [rates, setRates] = useState<Record<number, string>>({})
@@ -47,6 +48,16 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
   const [quickHigh, setQuickHigh] = useState('120')
   const [quickMid, setQuickMid] = useState('85')
   const [quickLow, setQuickLow] = useState('70')
+
+  useEffect(() => {
+    if (initialEmail) {
+      setUserEmail(initialEmail)
+    } else {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.email) setUserEmail(user.email)
+      })
+    }
+  }, [initialEmail])
 
   useEffect(() => {
     if (initialCleaningFee !== undefined) {

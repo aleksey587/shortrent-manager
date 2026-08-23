@@ -36,11 +36,23 @@ export default function ChannelConnectModal({ property, userEmail, isOpen, onClo
     vrbo: false,
   })
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [currentEmail, setCurrentEmail] = useState<string | null>(userEmail ?? null)
 
-  const isPro = isProUser(userEmail)
+  const isPro = isProUser(currentEmail)
 
   useEffect(() => {
-    // Load connected channel status from localStorage / Supabase
+    if (userEmail) {
+      setCurrentEmail(userEmail)
+    } else {
+      import('@/lib/supabase/client').then(({ createClient }) => {
+        createClient().auth.getUser().then(({ data: { user } }) => {
+          if (user?.email) setCurrentEmail(user.email)
+        })
+      })
+    }
+  }, [userEmail])
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(`greekhost_channels_${property.id}`)
       if (saved) {
