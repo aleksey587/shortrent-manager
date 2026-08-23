@@ -27,18 +27,30 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/register')
+  const pathname = request.nextUrl.pathname
 
-  if (!user && !isAuthPage) {
+  const isPublicRoute = 
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/guide') ||
+    pathname.startsWith('/api') ||
+    pathname === '/manifest.json' ||
+    pathname === '/favicon.ico' ||
+    pathname.startsWith('/_next')
+
+  // If user is not authenticated and trying to access protected dashboard route
+  if (!user && !isPublicRoute && pathname !== '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && isAuthPage) {
+  // If user is already authenticated and visits login/register
+  if (user && (pathname.startsWith('/login') || pathname.startsWith('/register'))) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
