@@ -274,25 +274,77 @@ export default function Sidebar() {
       )}
 
       {/* Mobile Bottom Navigation Bar (Thumb Friendly) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 flex items-center justify-around px-1 py-1.5 shadow-lg safe-area-inset-bottom">
-        {navItems.slice(0, 5).map(({ href, icon: Icon, shortLabel }) => {
-          const isActive = href === '/dashboard' ? pathname === href : pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all text-center min-w-[56px]',
-                isActive
-                  ? 'text-blue-600 font-bold'
-                  : 'text-gray-500 hover:text-gray-900'
-              )}
-            >
-              <Icon size={19} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
-              <span className="text-[10px] mt-0.5 leading-tight">{shortLabel}</span>
-            </Link>
-          )
-        })}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-gray-200 dark:border-slate-800 flex items-center justify-around px-1 py-1.5 shadow-lg safe-area-inset-bottom">
+        {/* 1. Dashboard */}
+        <Link
+          href="/dashboard"
+          className={cn(
+            'flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all text-center min-w-[52px]',
+            pathname === '/dashboard'
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'
+          )}
+        >
+          <LayoutDashboard size={19} className={pathname === '/dashboard' ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+          <span className="text-[10px] mt-0.5 leading-tight">{language === 'en' ? 'Home' : 'Αρχική'}</span>
+        </Link>
+
+        {/* 2. Calendar */}
+        <Link
+          href="/dashboard/calendar"
+          className={cn(
+            'flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all text-center min-w-[52px]',
+            pathname.startsWith('/dashboard/calendar')
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'
+          )}
+        >
+          <Calendar size={19} className={pathname.startsWith('/dashboard/calendar') ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+          <span className="text-[10px] mt-0.5 leading-tight">{language === 'en' ? 'Calendar' : 'Ημερολόγιο'}</span>
+        </Link>
+
+        {/* 3. Bookings */}
+        <Link
+          href="/dashboard/bookings"
+          className={cn(
+            'flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all text-center min-w-[52px]',
+            pathname.startsWith('/dashboard/bookings')
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'
+          )}
+        >
+          <BookOpen size={19} className={pathname.startsWith('/dashboard/bookings') ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+          <span className="text-[10px] mt-0.5 leading-tight">{language === 'en' ? 'Bookings' : 'Κρατήσεις'}</span>
+        </Link>
+
+        {/* 4. Messages (Crucial for host on mobile!) */}
+        <Link
+          href="/dashboard/guest-messages"
+          className={cn(
+            'flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all text-center min-w-[52px]',
+            pathname.startsWith('/dashboard/guest-messages')
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'
+          )}
+        >
+          <MessageSquare size={19} className={pathname.startsWith('/dashboard/guest-messages') ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+          <span className="text-[10px] mt-0.5 leading-tight">{language === 'en' ? 'Messages' : 'Μηνύματα'}</span>
+        </Link>
+
+        {/* 5. Menu Drawer Trigger */}
+        <button
+          onClick={() => setMobileOpen(true)}
+          className={cn(
+            'flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all text-center min-w-[52px]',
+            mobileOpen
+              ? 'text-blue-600 dark:text-blue-400 font-bold'
+              : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'
+          )}
+          aria-label="Όλα τα μενού"
+        >
+          <Menu size={19} className="stroke-[2]" />
+          <span className="text-[10px] mt-0.5 leading-tight">{language === 'en' ? 'More' : 'Μενού'}</span>
+        </button>
       </div>
     </>
   )
