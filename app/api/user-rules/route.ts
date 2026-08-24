@@ -104,10 +104,10 @@ Go up to the 5th floor by elevator. Then one more stairs up to the 6th floor.
 As you exit the white door on the roofdeck our door is to your right.
 Have a wonderful stay!`,
     photos: [
-      { id: 'p1', title: '🔑 Κλειδοθήκη (Lockbox)', url: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80' },
-      { id: 'p2', title: '🚪 Κεντρική Είσοδος', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80' },
-      { id: 'p3', title: '🔐 Κλειδοθήκη Code 3592', url: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=600&auto=format&fit=crop&q=80' },
-      { id: 'p4', title: '🛋️ Callisto Luxury Rooftop Suite', url: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&auto=format&fit=crop&q=80' }
+      { id: 'p1', title: '🔑 Κλειδοθήκη (Lockbox)', url: '/callisto/photo1_lockbox.jpg' },
+      { id: 'p2', title: '🚪 Κεντρική Είσοδος', url: '/callisto/photo2_door.jpg' },
+      { id: 'p3', title: '🔐 Κλειδοθήκη Code 3592', url: '/callisto/photo3_code3592.jpg' },
+      { id: 'p4', title: '🛋️ Callisto Luxury Rooftop Suite', url: '/callisto/photo4_suite.jpg' }
     ],
   },
 
