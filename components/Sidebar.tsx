@@ -50,7 +50,12 @@ export default function Sidebar() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) setUserEmail(user.email)
+      if (user?.email) {
+        setUserEmail(user.email)
+      } else {
+        const match = document.cookie.match(/greekhost_magic_user=([^;]+)/)
+        if (match) setUserEmail(decodeURIComponent(match[1]))
+      }
     })
   }, [])
 
@@ -60,6 +65,7 @@ export default function Sidebar() {
   const tier = getUserTier(userEmail)
 
   const handleLogout = async () => {
+    document.cookie = 'greekhost_magic_user=; Max-Age=0; path=/;'
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()

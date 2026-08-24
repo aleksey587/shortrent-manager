@@ -94,6 +94,17 @@ export default function LoginPage() {
           {loading ? 'Σύνδεση...' : 'Είσοδος'}
         </button>
       </form>
+
+      {/* 1-Click Instant Login for Clients */}
+      <div className="mt-6 pt-5 border-t border-gray-100 space-y-3">
+        <a
+          href="/api/auth/magic-login?user=theodoros"
+          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold py-3.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 active:scale-98 text-center"
+        >
+          <span>⚡ Άμεση Είσοδος: Callisto Rooftop Suite (Theodoros)</span>
+        </a>
+      </div>
+
       <p className="text-center text-sm text-gray-600 mt-6">
         Δεν έχετε λογαριασμό;{' '}
         <Link href="/register" className="text-blue-600 hover:underline font-semibold">
