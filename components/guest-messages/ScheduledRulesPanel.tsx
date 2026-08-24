@@ -453,8 +453,8 @@ export default function ScheduledRulesPanel({ userEmail }: Props) {
               </div>
 
               {/* Message Preview Snippet */}
-              <div className="mt-3.5 pt-3 border-t border-gray-100">
-                <p className="text-xs text-gray-700 font-mono bg-gray-50/90 p-3.5 rounded-2xl border border-gray-200/70 leading-relaxed whitespace-pre-line">
+              <div className="mt-3.5 pt-3 border-t border-gray-100 dark:border-slate-800">
+                <p className="text-xs font-mono p-3.5 rounded-2xl border leading-relaxed whitespace-pre-line bg-slate-100/90 text-slate-900 border-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800 shadow-inner">
                   {rule.body}
                 </p>
               </div>

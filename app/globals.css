@@ -42,25 +42,33 @@ html:not(.dark) textarea::placeholder {
   color: #f8fafc !important;
 }
 
-/* Dark Card Backgrounds */
-.dark .bg-white {
+/* Dark Card Backgrounds (including opacity variants) */
+.dark .bg-white,
+.dark [class*="bg-white/"] {
   background-color: #0f172a !important;
   color: #f8fafc !important;
   border-color: #1e293b !important;
 }
 
-.dark .bg-gray-50 {
-  background-color: #090e1d !important;
+.dark .bg-gray-50,
+.dark [class*="bg-gray-50/"],
+.dark [class*="bg-slate-50/"] {
+  background-color: #080e1d !important;
   color: #f1f5f9 !important;
+  border-color: #1e293b !important;
 }
 
-.dark .bg-gray-100 {
-  background-color: #1a233a !important;
+.dark .bg-gray-100,
+.dark [class*="bg-gray-100/"],
+.dark [class*="bg-slate-100/"] {
+  background-color: #151e32 !important;
   color: #f8fafc !important;
+  border-color: #273552 !important;
 }
 
-.dark .bg-gray-200 {
-  background-color: #273552 !important;
+.dark .bg-gray-200,
+.dark [class*="bg-gray-200/"] {
+  background-color: #1e293b !important;
 }
 
 /* Dark Text Colors */
@@ -74,7 +82,9 @@ html:not(.dark) textarea::placeholder {
 /* Dark Borders */
 .dark .border-gray-100,
 .dark .border-gray-200,
-.dark .border-gray-300 {
+.dark .border-gray-300,
+.dark [class*="border-gray-100/"],
+.dark [class*="border-gray-200/"] {
   border-color: #1e293b !important;
 }
 
@@ -92,7 +102,7 @@ html:not(.dark) textarea::placeholder {
 .dark input,
 .dark select,
 .dark textarea {
-  background-color: #0a0f1d !important;
+  background-color: #080d1a !important;
   color: #f8fafc !important;
   border-color: #1e293b !important;
 }
@@ -102,29 +112,40 @@ html:not(.dark) textarea::placeholder {
   color: #64748b !important;
 }
 
-/* Dark Accent Cards (Blue/Teal/Purple tints) */
-.dark .bg-blue-50 {
-  background-color: #0e1e38 !important;
+/* Dark Accent Cards (Blue/Teal/Purple/Amber tints) */
+.dark .bg-blue-50,
+.dark [class*="bg-blue-50/"] {
+  background-color: #0c1c38 !important;
   color: #93c5fd !important;
   border-color: #1e3a8a !important;
 }
 
-.dark .bg-teal-50 {
-  background-color: #062222 !important;
+.dark .bg-teal-50,
+.dark [class*="bg-teal-50/"] {
+  background-color: #052020 !important;
   color: #5eead4 !important;
   border-color: #115e59 !important;
 }
 
-.dark .bg-purple-50 {
-  background-color: #1f1438 !important;
+.dark .bg-purple-50,
+.dark [class*="bg-purple-50/"] {
+  background-color: #1b1232 !important;
   color: #d8b4fe !important;
   border-color: #581c87 !important;
 }
 
-.dark .bg-amber-50 {
-  background-color: #261b0c !important;
+.dark .bg-amber-50,
+.dark [class*="bg-amber-50/"] {
+  background-color: #23180a !important;
   color: #fde047 !important;
   border-color: #78350f !important;
+}
+
+.dark .bg-emerald-50,
+.dark [class*="bg-emerald-50/"] {
+  background-color: #06231a !important;
+  color: #6ee7b7 !important;
+  border-color: #065f46 !important;
 }
 
 /* =========================================
