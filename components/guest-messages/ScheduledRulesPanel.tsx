@@ -615,23 +615,53 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
     })
   }
 
-  const handlePhotoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxWidth = 800, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          }
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height)
+            resolve(canvas.toDataURL('image/jpeg', quality))
+          } else {
+            resolve(event.target?.result as string)
+          }
+        }
+        img.onerror = () => resolve(event.target?.result as string)
+        img.src = event.target?.result as string
+      }
+      reader.onerror = () => resolve('')
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handlePhotoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !editingRule) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
+    try {
+      const compressedDataUrl = await compressImage(file, 800, 0.75)
+      if (!compressedDataUrl) return
       const newPhoto: RulePhoto = {
         id: `photo-${Date.now()}`,
         title: photoTitleInput,
-        url: dataUrl,
+        url: compressedDataUrl,
       }
-      setEditingRule({
-        ...editingRule,
-        photos: [...(editingRule.photos || []), newPhoto],
-      })
-    }
-    reader.readAsDataURL(file)
+      setEditingRule(prev => prev ? {
+        ...prev,
+        photos: [...(prev.photos || []), newPhoto],
+      } : null)
+    } catch {}
   }
 
   const handleAddPhotoUrl = () => {
