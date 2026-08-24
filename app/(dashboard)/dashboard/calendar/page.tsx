@@ -319,31 +319,31 @@ export default function CalendarPage() {
                       )}
                     </div>
 
-                    {/* Bookings rendering: Full bar or 50/50 Split on Turnaround */}
+                    {/* Bookings rendering: Full bar or 30/70 Split on Turnaround */}
                     {hasAnyBooking ? (
                       <div className="space-y-1.5 my-auto z-2">
-                        {/* CASE 1: Turnaround Day (Same Day Checkout & Checkin) -> 50/50 Split WITH VISUAL GAP */}
+                        {/* CASE 1: Turnaround Day (Same Day Checkout & Checkin) -> 30% Checkout / Small Gap / 70% Checkin */}
                         {isTurnaround ? (
-                          <div className="flex items-center w-full h-7 -mx-1 px-0.5 gap-1.5">
-                            {/* Left Half: Departing Guest (Checkout morning) -> Name first, then arrow at the end ◂ */}
+                          <div className="flex items-center w-[calc(100%+12px)] h-7 -mx-1.5 gap-1">
+                            {/* Left 30%: Departing Guest (Checkout morning) -> Connects seamlessly to left border */}
                             {dayCheckouts.slice(0, 1).map(b => (
                               <div
                                 key={`out-${b.id}`}
                                 onClick={() => setSelectedBooking(b)}
-                                className={`flex-1 h-full flex items-center justify-between pl-2 pr-1.5 text-[10px] font-bold shadow-xs cursor-pointer transition-all rounded-r-lg ${getPlatformBg(b.platform)}`}
+                                className={`w-[32%] h-full flex items-center justify-between pl-1 pr-1 text-[9px] font-bold shadow-xs cursor-pointer transition-all rounded-r-md ${getPlatformBg(b.platform)}`}
                                 title={`Αναχώρηση (Out): ${b.guest_name || 'Reserved'}`}
                               >
-                                <span className="truncate leading-none">{b.guest_name || 'Reserved'}</span>
-                                <span className="text-[9px] font-black shrink-0 ml-1">◂</span>
+                                <span className="truncate leading-none">{b.guest_name || 'Out'}</span>
+                                <span className="text-[8px] font-black shrink-0">◂</span>
                               </div>
                             ))}
 
-                            {/* Right Half: Arriving Guest (Checkin afternoon) -> Start Dot ● then Name */}
+                            {/* Right 70%: Arriving Guest (Checkin afternoon) -> Starts with Dot ●, spans right to border */}
                             {dayCheckins.slice(0, 1).map(b => (
                               <div
                                 key={`in-${b.id}`}
                                 onClick={() => setSelectedBooking(b)}
-                                className={`flex-1 h-full flex items-center gap-1 pl-1.5 pr-1 text-[10px] font-bold shadow-xs cursor-pointer transition-all rounded-l-lg ${getPlatformBg(b.platform)}`}
+                                className={`flex-1 h-full flex items-center gap-1 pl-1.5 pr-1 text-[10px] font-bold shadow-xs cursor-pointer transition-all rounded-l-md ${getPlatformBg(b.platform)}`}
                                 title={`Άφιξη (In): ${b.guest_name || 'Reserved'}`}
                               >
                                 <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 shadow-2xs" />
@@ -354,20 +354,20 @@ export default function CalendarPage() {
                         ) : (
                           /* CASE 2: Single Check-in, Check-out or Ongoing Full Day */
                           <>
-                            {/* Checkouts without same-day checkin -> Name first, then arrow at the end ◂ */}
+                            {/* Checkouts without same-day checkin -> Starts from left border, occupies 35%, rounded right */}
                             {dayCheckouts.map(b => (
                               <div
                                 key={`co-${b.id}`}
                                 onClick={() => setSelectedBooking(b)}
-                                className={`cursor-pointer h-7 w-1/2 -ml-1.5 pr-2 pl-2 rounded-r-lg flex items-center justify-between text-[10px] font-bold shadow-xs transition-all ${getPlatformBg(b.platform)}`}
+                                className={`cursor-pointer h-7 w-[35%] -ml-1.5 pr-1.5 pl-1.5 rounded-r-md flex items-center justify-between text-[10px] font-bold shadow-xs transition-all ${getPlatformBg(b.platform)}`}
                                 title={`Αναχώρηση (Check-out): ${b.guest_name || 'Reserved'}`}
                               >
-                                <span className="truncate leading-none">{b.guest_name || 'Reserved'}</span>
-                                <span className="text-[9px] font-black shrink-0 ml-1">◂</span>
+                                <span className="truncate leading-none text-[9px]">{b.guest_name || 'Out'}</span>
+                                <span className="text-[8px] font-black shrink-0">◂</span>
                               </div>
                             ))}
 
-                            {/* Checkins without same-day checkout (Starts with white dot ●, rounded left, spans right) */}
+                            {/* Checkins without same-day checkout (Starts with white dot ●, rounded left, spans right to border) */}
                             {dayCheckins.map(b => {
                               const checkOutDate = parseISO(b.check_out)
                               const is1Night = differenceInDays(checkOutDate, parseISO(b.check_in)) === 1
@@ -378,7 +378,7 @@ export default function CalendarPage() {
                                   className={`cursor-pointer h-7 flex items-center gap-1 text-[11px] font-bold shadow-xs transition-all ${getPlatformBg(b.platform)} ${
                                     isLastDayOfWeek
                                       ? 'rounded-lg mx-0.5 px-2'
-                                      : 'rounded-l-lg -mr-1.5 pl-2 pr-1'
+                                      : 'rounded-l-md -mr-1.5 pl-2 pr-1'
                                   }`}
                                   title={`Άφιξη (Check-in): ${b.guest_name || 'Reserved'}`}
                                 >
@@ -393,7 +393,7 @@ export default function CalendarPage() {
                               )
                             })}
 
-                            {/* Full-day Ongoing Stays (Middle of booking) */}
+                            {/* Full-day Ongoing Stays (Middle of booking) -> Seamless continuous bar across full width */}
                             {dayOngoings.map(b => {
                               return (
                                 <div
@@ -403,9 +403,9 @@ export default function CalendarPage() {
                                     isFirstDayOfWeek && isLastDayOfWeek
                                       ? 'rounded-lg mx-0.5 px-2'
                                       : isFirstDayOfWeek
-                                      ? 'rounded-l-lg -mr-1.5 pl-2 pr-1'
+                                      ? 'rounded-l-md -mr-1.5 pl-2 pr-1'
                                       : isLastDayOfWeek
-                                      ? 'rounded-r-lg -ml-1.5 pr-2 pl-1'
+                                      ? 'rounded-r-md -ml-1.5 pr-2 pl-1'
                                       : 'rounded-none -mx-1.5 px-1'
                                   }`}
                                   title={`${b.guest_name || 'Reserved'} (Διαμονή)`}
