@@ -53,20 +53,24 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
 
+  const [monthlyRates, setMonthlyRates] = useState<any[]>([])
+
   useEffect(() => { fetchData() }, [])
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: { user } }, { data: props }, { data: books }] = await Promise.all([
+    const [{ data: { user } }, { data: props }, { data: books }, { data: ratesData }] = await Promise.all([
       supabase.auth.getUser(),
       supabase.from('properties').select('id, name, color').order('created_at'),
       supabase.from('bookings').select('id, property_id, guest_name, check_in, check_out, platform, total_price, nights'),
+      supabase.from('monthly_rates').select('*'),
     ])
     if (user?.email) setUserEmail(user.email)
     const fetchedProps = props ?? []
     setProperties(fetchedProps)
     setSelectedProperties(new Set(fetchedProps.map(p => p.id)))
     setBookings(books ?? [])
+    setMonthlyRates(ratesData ?? [])
     setLoading(false)
   }
 
@@ -100,12 +104,18 @@ export default function CalendarPage() {
     return map
   }, [filteredBookings])
 
-  // Calculate seasonal pricing per day
-  const getSeasonalRate = (day: Date): number => {
+  // Calculate real pricing per day from user's configured monthly rates
+  const getSeasonalRate = (day: Date): number | null => {
     const month = day.getMonth() + 1 // 1-12
-    if (month >= 6 && month <= 9) return 125.0 // Summer
-    if (month === 4 || month === 5 || month === 10) return 85.0 // Spring/Autumn
-    return 70.0 // Winter
+    const year = day.getFullYear()
+    
+    // Find rate for selected property
+    const targetPropId = Array.from(selectedProperties)[0]
+    if (targetPropId) {
+      const match = monthlyRates.find(r => r.property_id === targetPropId && r.month === month && r.year === year)
+      if (match?.price_per_night) return Number(match.price_per_night)
+    }
+    return null
   }
 
   // Generate calendar grid
@@ -422,12 +432,12 @@ export default function CalendarPage() {
                         )}
                       </div>
                     ) : (
-                      /* Empty Day: Show Daily Seasonal Price */
+                      /* Empty Day: Show Daily Seasonal Price if set */
                       <div className="mt-auto pt-2 flex items-center justify-between text-right">
                         <span className="text-[9px] font-medium text-gray-300">
                           {isCurrentMonth ? 'Κενό' : ''}
                         </span>
-                        {isCurrentMonth && (
+                        {isCurrentMonth && seasonalPrice !== null && (
                           <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
                             €{seasonalPrice}
                           </span>
