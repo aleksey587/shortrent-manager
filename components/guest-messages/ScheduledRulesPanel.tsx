@@ -34,7 +34,7 @@ export interface AutomationRule {
   photos?: RulePhoto[]
 }
 
-// Theodoros Kolokuthas Custom Account Rules
+// Theodoros Kolokuthas Exact Custom Account Rules (From Screenshots)
 const THEODOROS_CUSTOM_RULES: AutomationRule[] = [
   {
     id: 'rule-booking-confirm',
@@ -45,54 +45,99 @@ const THEODOROS_CUSTOM_RULES: AutomationRule[] = [
     sendTime: 'Άμεσα',
     channel: 'all',
     icon: '⚡',
-    subject: 'Confirmation: {{property_name}}',
-    body: 'Hope you are doing fine :)\n\nThank you so much for choosing my apartment !\n\nI am excited to have you !\n\nAll the information you might need regarding your reservation, for example: address, self- check in instructions, check in/out times, and much more, will be sent to you a day before your arrival.',
+    subject: 'Booking Confirmation: {{property_name}}',
+    body: `Hope you are doing fine :)
+
+
+Thank you so much for choosing my apartment !
+
+
+I am excited to have you !
+
+
+All the information you might need regarding your reservation, for example: address, self- check in instructions, check in/out times, and much more, will be sent to you a day before your arrival.
+
+
+Please take some time to read the house manual and the house rules.
+
+
+Looking forward to hearing from you !
+
+
+Please do not hesitate to ask any questions you might have :)
+
+
+Safe travels !`,
     photos: [],
   },
   {
-    id: 'rule-before-checkin',
-    title: 'Οδηγίες Άφιξης & Lockbox (1 ημέρα πριν)',
+    id: 'rule-arrival-directions',
+    title: 'Arrival',
     enabled: true,
-    triggerType: 'before_checkin',
-    offsetDays: 1,
+    triggerType: 'instant_booking',
+    offsetDays: 0,
     sendTime: '12:00',
     channel: 'all',
-    icon: '🔑',
-    subject: 'Οδηγίες Άφιξης & Πρόσβασης: {{property_name}}',
-    body: 'Ανυπομονούμε να σας υποδεχτούμε αύριο {{check_in}} στο {{property_name}}!\n\n📍 Διεύθυνση: {{address}}\n🕒 Check-in: από τις {{check_in_time}}\n🔐 Κωδικός Κλειδοθήκης (Lockbox): {{lockbox_code}}\n\n📸 Δείτε παρακάτω τη φωτογραφία της κλειδοθήκης και της εισόδου για εύκολη πρόσβαση!\n\nΕνημερώστε μας μόλις φτάσετε!',
-    photos: [
-      { id: 'p1', title: '🔑 Κλειδοθήκη (Lockbox)', url: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80' },
-      { id: 'p2', title: '🚪 Κεντρική Είσοδος', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80' }
-    ],
+    icon: '💬',
+    subject: 'How to get here: {{property_name}}',
+    body: `How to get here:
+
+Please read carefully!
+
+
+Adress: Parasiou 28,Athens 104 40
+Floor: 6th floor
+Bell: The Homis
+
+
+From the airport:
+
+
+Option 1: Take the metro (blue line) from the airport to Syntagma square.
+The metro departs from the airport every 30' min (05' and 35' from 6:35 to 23:35) and takes about 40 minutes.
+
+At Syntagma station change onto the red line to 'Larissa station'
+From here it is a 5-minute walk home.
+
+
+A one-way ticket for one person: 10.00 €
+Return ticket for one person: 18.00 €
+A one-way ticket for 2 persons: 18.00 €
+A one-way ticket for 3 persons: 24.00 €
+One-way half-price tickets (students younger than 25, youngsters 6-18, people older than 65+): 5.00 €
+Children under 6 years: Free
+
+
+Option 2: Take bus 'X95' (runs 24/7) from the airport (€6) to Syntagma square. It takes about 50 minutes. At Syntagma station change onto the red line to 'Larissa station'.`,
+    photos: [],
   },
   {
-    id: 'rule-checkin-wifi',
-    title: 'Καλωσόρισμα & Κωδικός Wi-Fi (Ημέρα Άφιξης)',
+    id: 'rule-checkin-lockbox-photos',
+    title: 'Check-in & Lockbox',
     enabled: true,
     triggerType: 'checkin_day',
     offsetDays: 0,
-    sendTime: '14:00',
+    sendTime: '10:00',
     channel: 'all',
-    icon: '📶',
-    subject: 'Καλώς ήρθατε στο {{property_name}} & Στοιχεία Wi-Fi',
-    body: 'Καλώς ήρθατε στο {{property_name}}! 🏠\n\n📶 Wi-Fi Δίκτυο: {{wifi_name}}\n🔑 Κωδικός Wi-Fi: {{wifi_password}}\n📱 Ψηφιακός Οδηγός Σπιτιού: {{guide_link}}\n\nΕυχόμαστε μια υπέροχη διαμονή!',
-    photos: [],
+    icon: '🔑',
+    subject: 'Check-in & Lockbox Instructions: {{property_name}}',
+    body: `On the right side of the building you will find this letter box.
+Open it to find the lockbox inside.
+Pull down the black flap and enter code '3592'.
+Push down the black button with the arrow and pull the latch towards you to open the box.
+After you take the keys please return the numbers back to '0000'
+Go up to the 5th floor by elevator. Then one more stairs up to the 6th floor.
+As you exit the white door on the roofdeck our door is to your right.
+Have a wonderful stay!`,
+    photos: [
+      { id: 'p1', title: '🔑 Κλειδοθήκη (Lockbox)', url: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80' },
+      { id: 'p2', title: '🚪 Κεντρική Είσοδος', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80' },
+      { id: 'p3', title: '🔐 Κλειδοθήκη Code 3592', url: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=600&auto=format&fit=crop&q=80' },
+      { id: 'p4', title: '🛋️ Callisto Luxury Rooftop Suite', url: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&auto=format&fit=crop&q=80' }
+    ],
   },
   {
-    id: 'rule-midstay-check',
-    title: 'Έλεγχος Ικανοποίησης (Mid-Stay Check)',
-    enabled: true,
-    triggerType: 'mid_stay',
-    offsetDays: 1,
-    sendTime: '11:00',
-    channel: 'all',
-    icon: '☕',
-    subject: 'Πώς είναι η διαμονή σας στο {{property_name}};',
-    body: 'Καλημέρα {{guest_name}}! Ελπίζουμε να απολαμβάνετε τη διαμονή σας στο {{property_name}}. Ενημερώστε μας αν χρειάζεστε επιπλέον πετσέτες, προτάσεις για φαγητό ή οτιδήποτε άλλο!',
-    photos: [],
-  },
-  {
-    id: 'rule-before-checkout',
+    id: 'rule-before-checkout-theo',
     title: 'Οδηγίες Αναχώρησης & Κλειδιά (1 ημέρα πριν το Check-out)',
     enabled: true,
     triggerType: 'before_checkout',
@@ -100,21 +145,26 @@ const THEODOROS_CUSTOM_RULES: AutomationRule[] = [
     sendTime: '18:00',
     channel: 'all',
     icon: '🚪',
-    subject: 'Πληροφορίες Αναχώρησης (Check-out): {{property_name}}',
-    body: 'Γεια σας {{guest_name}}, σας υπενθυμίζουμε ότι το check-out είναι αύριο {{check_out}} έως τις {{check_out_time}}.\n\nΠαρακαλούμε:\n1. Κλείστε το A/C και τον θερμοσίφωνα\n2. Αφήστε τα κλειδιά στην κλειδοθήκη (κωδικός {{lockbox_code}})\n\nΣας ευχαριστούμε θερμά για τη φιλοξενία!',
-    photos: [],
-  },
-  {
-    id: 'rule-after-checkout-review',
-    title: 'Ευχαριστήριο & Αίτημα Κριτικής 5 Αστέρων (Μετά την Αναχώρηση)',
-    enabled: true,
-    triggerType: 'after_checkout',
-    offsetDays: 0,
-    sendTime: '15:00',
-    channel: 'all',
-    icon: '⭐',
-    subject: 'Ευχαριστούμε για τη διαμονή σας! ⭐⭐⭐⭐⭐',
-    body: 'Σας ευχαριστούμε πολύ που επιλέξατε το {{property_name}} για τη διαμονή σας! Ελπίζουμε να περάσατε υπέροχα.\n\nΑν μείνατε ευχαριστημένοι, μια θετική κριτική 5 αστέρων στην πλατφόρμα θα μας βοηθούσε απίστευτα. Καλό ταξίδι επιστροφής!',
+    subject: 'Check-out & Thank You: {{property_name}}',
+    body: `Dear {{guest_name}} ,thank you for everything !
+
+
+I hope you had a wonderful stay😊
+
+
+As for the keys, it is best to leave them on the table or kitchen counter inside the apartment.
+
+
+I want to thank you again for choosing my apartment to spend your time in Greece!
+
+
+note that your review is most welcome as it helps me to keep improving ☺️
+
+
+Wish you the best :)
+
+
+Warmest regards, Theo`,
     photos: [],
   },
 ]
