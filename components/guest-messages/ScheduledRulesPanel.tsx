@@ -268,6 +268,27 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
     }
   }, [userEmail])
 
+  const [syncingCloud, setSyncingCloud] = useState(false)
+
+  const fetchCloudRules = async (email: string) => {
+    setSyncingCloud(true)
+    try {
+      const res = await fetch(`/api/user-rules?email=${encodeURIComponent(email)}&_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+      })
+      const data = await res.json()
+      if (data?.rules && Array.isArray(data.rules) && data.rules.length > 0) {
+        setRules(data.rules)
+        const storageKey = `greekhost_rules_${email.toLowerCase()}`
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(data.rules))
+        } catch {}
+      }
+    } catch {}
+    setSyncingCloud(false)
+  }
+
   // Load User-Specific Rules from LocalStorage and Cloud API across all devices
   useEffect(() => {
     const emailKey = currentEmail ? currentEmail.toLowerCase() : 'guest'
@@ -279,14 +300,8 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
     let foundRules: AutomationRule[] | null = null
     try {
       const local = localStorage.getItem(storageKey)
-      const legacy = localStorage.getItem('greekhost_automated_rules')
-
       if (local) {
         foundRules = JSON.parse(local)
-      } else if (legacy) {
-        foundRules = JSON.parse(legacy)
-        // Automatically migrate to user storage
-        localStorage.setItem(storageKey, legacy)
       }
     } catch {}
 
@@ -296,28 +311,18 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
       setRules(baseDefault)
     }
 
-    // Cloud fetch for multi-device sync
     if (currentEmail) {
-      fetch(`/api/user-rules?email=${encodeURIComponent(currentEmail)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data?.rules && Array.isArray(data.rules) && data.rules.length > 0) {
-            setRules(data.rules)
-            try {
-              localStorage.setItem(storageKey, JSON.stringify(data.rules))
-            } catch {}
-          } else if (foundRules) {
-            // Push existing local rules to cloud
-            fetch('/api/user-rules', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: currentEmail, rules: foundRules }),
-            }).catch(() => {})
-          }
-        })
-        .catch(() => {})
+      fetchCloudRules(currentEmail)
     }
   }, [currentEmail])
+
+  const handleForceCloudSync = () => {
+    if (currentEmail) {
+      fetchCloudRules(currentEmail)
+      setSavedSuccess('🔄 Τα μηνύματα συγχρονίστηκαν επιτυχώς με το Cloud!')
+      setTimeout(() => setSavedSuccess(null), 3000)
+    }
+  }
 
   useEffect(() => {
     if (bookings && bookings.length > 0 && !selectedBookingId) {
@@ -536,6 +541,16 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              type="button"
+              onClick={handleForceCloudSync}
+              className="flex items-center justify-center gap-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-white border border-blue-400/30 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-95"
+              title="Άμεσος συγχρονισμός μηνυμάτων από το Cloud"
+            >
+              <RotateCcw size={14} className={syncingCloud ? 'animate-spin text-amber-300' : ''} />
+              <span>{syncingCloud ? 'Συγχρονισμός...' : 'Συγχρονισμός'}</span>
+            </button>
+
             <button
               type="button"
               onClick={handleCreateNewRule}

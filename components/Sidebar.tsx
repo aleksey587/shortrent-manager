@@ -237,6 +237,17 @@ export default function Sidebar() {
             <Sparkles size={12} className="text-amber-600" />
             <span>Pro</span>
           </Link>
+
+          {/* Mobile Direct Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
+            title="Αποσύνδεση"
+            aria-label="Αποσύνδεση"
+          >
+            <LogOut size={18} />
+          </button>
+
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
@@ -254,7 +265,7 @@ export default function Sidebar() {
           onClick={() => setMobileOpen(false)}
         >
           <aside
-            className="absolute top-0 left-0 h-full w-72 max-w-[80vw] bg-white flex flex-col shadow-2xl z-50 animate-in slide-in-from-left duration-200"
+            className="absolute top-0 left-0 h-full w-72 max-w-[85vw] bg-white flex flex-col shadow-2xl z-50 animate-in slide-in-from-left duration-200 overflow-y-auto pb-12"
             onClick={e => e.stopPropagation()}
           >
             <NavLinks />
