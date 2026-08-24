@@ -407,7 +407,7 @@ export default function GuestMessagesPage() {
 
       {/* Scheduled Automation Rules View */}
       {activeMainTab === 'scheduled' ? (
-        <ScheduledRulesPanel userEmail={userEmail} />
+        <ScheduledRulesPanel userEmail={userEmail} bookings={bookings} properties={properties} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Booking & Template Selector */}
