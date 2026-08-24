@@ -140,15 +140,20 @@ Warmest regards, Theo`,
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    const email = (user?.email || request.nextUrl.searchParams.get('email') || '').toLowerCase().trim()
+    const email = (request.nextUrl.searchParams.get('email') || '').toLowerCase().trim()
 
     if (!email) {
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const userEmail = user?.email?.toLowerCase().trim()
+      if (userEmail) {
+        const rules = userRulesCloudStore[userEmail] || (userEmail === 'theodoroskolokuthas@gmail.com' ? THEODOROS_CUSTOM_RULES : null)
+        return NextResponse.json({ rules, email: userEmail }, { status: 200 })
+      }
       return NextResponse.json({ rules: null }, { status: 200 })
     }
 
-    const rules = userRulesCloudStore[email] || user?.user_metadata?.custom_rules || (email === 'theodoroskolokuthas@gmail.com' ? THEODOROS_CUSTOM_RULES : null)
+    const rules = userRulesCloudStore[email] || (email === 'theodoroskolokuthas@gmail.com' ? THEODOROS_CUSTOM_RULES : null)
     return NextResponse.json({ rules, email }, { status: 200 })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch rules' }, { status: 500 })
@@ -157,24 +162,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
     const body = await request.json()
-    const email = (user?.email || body.email || '').toLowerCase().trim()
+    const email = (body.email || '').toLowerCase().trim()
 
     if (!email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Email required' }, { status: 400 })
     }
 
     if (body.rules && Array.isArray(body.rules)) {
       userRulesCloudStore[email] = body.rules
-      if (user) {
-        try {
-          await supabase.auth.updateUser({
-            data: { custom_rules: body.rules }
-          })
-        } catch {}
-      }
     }
 
     return NextResponse.json({ success: true, email }, { status: 200 })
