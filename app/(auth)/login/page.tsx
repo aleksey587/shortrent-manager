@@ -20,11 +20,18 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError('Λανθασμένο email ή κωδικός.')
       setLoading(false)
     } else {
+      try {
+        if (data?.user?.user_metadata?.custom_rules) {
+          await supabase.auth.updateUser({
+            data: { custom_rules: null }
+          })
+        }
+      } catch {}
       router.push('/dashboard')
       router.refresh()
     }
