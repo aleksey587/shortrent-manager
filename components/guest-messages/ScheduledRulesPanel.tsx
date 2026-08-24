@@ -5,7 +5,7 @@ import {
   Clock, Sparkles, Check, Plus, Trash2, Edit3, Lock, Zap,
   AlertCircle, ChevronDown, ChevronUp, Bell, Calendar, Send, ShieldCheck,
   RotateCcw, Copy, Info, Smile, Image as ImageIcon, Upload, Eye, X, ExternalLink,
-  User, MessageSquare
+  User, MessageSquare, CloudCheck
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { el } from 'date-fns/locale'
@@ -34,6 +34,92 @@ export interface AutomationRule {
   photos?: RulePhoto[]
 }
 
+// Theodoros Kolokuthas Custom Account Rules
+const THEODOROS_CUSTOM_RULES: AutomationRule[] = [
+  {
+    id: 'rule-booking-confirm',
+    title: 'Άμεση Επιβεβαίωση Κράτησης',
+    enabled: true,
+    triggerType: 'instant_booking',
+    offsetDays: 0,
+    sendTime: 'Άμεσα',
+    channel: 'all',
+    icon: '⚡',
+    subject: 'Confirmation: {{property_name}}',
+    body: 'Hope you are doing fine :)\n\nThank you so much for choosing my apartment !\n\nI am excited to have you !\n\nAll the information you might need regarding your reservation, for example: address, self- check in instructions, check in/out times, and much more, will be sent to you a day before your arrival.',
+    photos: [],
+  },
+  {
+    id: 'rule-before-checkin',
+    title: 'Οδηγίες Άφιξης & Lockbox (1 ημέρα πριν)',
+    enabled: true,
+    triggerType: 'before_checkin',
+    offsetDays: 1,
+    sendTime: '12:00',
+    channel: 'all',
+    icon: '🔑',
+    subject: 'Οδηγίες Άφιξης & Πρόσβασης: {{property_name}}',
+    body: 'Ανυπομονούμε να σας υποδεχτούμε αύριο {{check_in}} στο {{property_name}}!\n\n📍 Διεύθυνση: {{address}}\n🕒 Check-in: από τις {{check_in_time}}\n🔐 Κωδικός Κλειδοθήκης (Lockbox): {{lockbox_code}}\n\n📸 Δείτε παρακάτω τη φωτογραφία της κλειδοθήκης και της εισόδου για εύκολη πρόσβαση!\n\nΕνημερώστε μας μόλις φτάσετε!',
+    photos: [
+      { id: 'p1', title: '🔑 Κλειδοθήκη (Lockbox)', url: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80' },
+      { id: 'p2', title: '🚪 Κεντρική Είσοδος', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80' }
+    ],
+  },
+  {
+    id: 'rule-checkin-wifi',
+    title: 'Καλωσόρισμα & Κωδικός Wi-Fi (Ημέρα Άφιξης)',
+    enabled: true,
+    triggerType: 'checkin_day',
+    offsetDays: 0,
+    sendTime: '14:00',
+    channel: 'all',
+    icon: '📶',
+    subject: 'Καλώς ήρθατε στο {{property_name}} & Στοιχεία Wi-Fi',
+    body: 'Καλώς ήρθατε στο {{property_name}}! 🏠\n\n📶 Wi-Fi Δίκτυο: {{wifi_name}}\n🔑 Κωδικός Wi-Fi: {{wifi_password}}\n📱 Ψηφιακός Οδηγός Σπιτιού: {{guide_link}}\n\nΕυχόμαστε μια υπέροχη διαμονή!',
+    photos: [],
+  },
+  {
+    id: 'rule-midstay-check',
+    title: 'Έλεγχος Ικανοποίησης (Mid-Stay Check)',
+    enabled: true,
+    triggerType: 'mid_stay',
+    offsetDays: 1,
+    sendTime: '11:00',
+    channel: 'all',
+    icon: '☕',
+    subject: 'Πώς είναι η διαμονή σας στο {{property_name}};',
+    body: 'Καλημέρα {{guest_name}}! Ελπίζουμε να απολαμβάνετε τη διαμονή σας στο {{property_name}}. Ενημερώστε μας αν χρειάζεστε επιπλέον πετσέτες, προτάσεις για φαγητό ή οτιδήποτε άλλο!',
+    photos: [],
+  },
+  {
+    id: 'rule-before-checkout',
+    title: 'Οδηγίες Αναχώρησης & Κλειδιά (1 ημέρα πριν το Check-out)',
+    enabled: true,
+    triggerType: 'before_checkout',
+    offsetDays: 1,
+    sendTime: '18:00',
+    channel: 'all',
+    icon: '🚪',
+    subject: 'Πληροφορίες Αναχώρησης (Check-out): {{property_name}}',
+    body: 'Γεια σας {{guest_name}}, σας υπενθυμίζουμε ότι το check-out είναι αύριο {{check_out}} έως τις {{check_out_time}}.\n\nΠαρακαλούμε:\n1. Κλείστε το A/C και τον θερμοσίφωνα\n2. Αφήστε τα κλειδιά στην κλειδοθήκη (κωδικός {{lockbox_code}})\n\nΣας ευχαριστούμε θερμά για τη φιλοξενία!',
+    photos: [],
+  },
+  {
+    id: 'rule-after-checkout-review',
+    title: 'Ευχαριστήριο & Αίτημα Κριτικής 5 Αστέρων (Μετά την Αναχώρηση)',
+    enabled: true,
+    triggerType: 'after_checkout',
+    offsetDays: 0,
+    sendTime: '15:00',
+    channel: 'all',
+    icon: '⭐',
+    subject: 'Ευχαριστούμε για τη διαμονή σας! ⭐⭐⭐⭐⭐',
+    body: 'Σας ευχαριστούμε πολύ που επιλέξατε το {{property_name}} για τη διαμονή σας! Ελπίζουμε να περάσατε υπέροχα.\n\nΑν μείνατε ευχαριστημένοι, μια θετική κριτική 5 αστέρων στην πλατφόρμα θα μας βοηθούσε απίστευτα. Καλό ταξίδι επιστροφής!',
+    photos: [],
+  },
+]
+
+// Standard Default Rules for other users
 const DEFAULT_RULES: AutomationRule[] = [
   {
     id: 'rule-booking-confirm',
@@ -151,7 +237,11 @@ interface Props {
 }
 
 export default function ScheduledRulesPanel({ userEmail, bookings = [], properties = [] }: Props) {
-  const [rules, setRules] = useState<AutomationRule[]>(DEFAULT_RULES)
+  const [currentEmail, setCurrentEmail] = useState<string | null>(userEmail ?? null)
+  const isTheodoros = currentEmail?.toLowerCase() === 'theodoroskolokuthas@gmail.com'
+  const initialBaseRules = isTheodoros ? THEODOROS_CUSTOM_RULES : DEFAULT_RULES
+
+  const [rules, setRules] = useState<AutomationRule[]>(initialBaseRules)
   const [editingRule, setEditingRule] = useState<AutomationRule | null>(null)
   const [isNewRule, setIsNewRule] = useState(false)
   const [showProModal, setShowProModal] = useState(false)
@@ -164,7 +254,6 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
   const [photoUrlInput, setPhotoUrlInput] = useState('')
   const [previewingPhoto, setPreviewingPhoto] = useState<RulePhoto | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [currentEmail, setCurrentEmail] = useState<string | null>(userEmail ?? null)
   const isPro = isProUser(currentEmail)
 
   useEffect(() => {
@@ -179,12 +268,38 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
     }
   }, [userEmail])
 
+  // Load User-Specific Rules from LocalStorage and Cloud API across all devices
   useEffect(() => {
+    const emailKey = currentEmail ? currentEmail.toLowerCase() : 'guest'
+    const storageKey = `greekhost_rules_${emailKey}`
+
+    const isTheo = emailKey === 'theodoroskolokuthas@gmail.com'
+    const baseDefault = isTheo ? THEODOROS_CUSTOM_RULES : DEFAULT_RULES
+
     try {
-      const saved = localStorage.getItem('greekhost_automated_rules')
-      if (saved) setRules(JSON.parse(saved))
+      const local = localStorage.getItem(storageKey)
+      if (local) {
+        setRules(JSON.parse(local))
+      } else {
+        setRules(baseDefault)
+      }
     } catch {}
-  }, [])
+
+    // Cloud fetch for multi-device sync
+    if (currentEmail) {
+      fetch(`/api/user-rules?email=${encodeURIComponent(currentEmail)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.rules && Array.isArray(data.rules) && data.rules.length > 0) {
+            setRules(data.rules)
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(data.rules))
+            } catch {}
+          }
+        })
+        .catch(() => {})
+    }
+  }, [currentEmail])
 
   useEffect(() => {
     if (bookings && bookings.length > 0 && !selectedBookingId) {
@@ -197,9 +312,22 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
 
   const saveRulesToStorage = (updated: AutomationRule[], msg: string = 'Οι κανόνες αυτοματισμού αποθηκεύτηκαν επιτυχώς!') => {
     setRules(updated)
+    const emailKey = currentEmail ? currentEmail.toLowerCase() : 'guest'
+    const storageKey = `greekhost_rules_${emailKey}`
+
     try {
-      localStorage.setItem('greekhost_automated_rules', JSON.stringify(updated))
+      localStorage.setItem(storageKey, JSON.stringify(updated))
     } catch {}
+
+    // Sync to Cloud API
+    if (currentEmail) {
+      fetch('/api/user-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentEmail, rules: updated }),
+      }).catch(() => {})
+    }
+
     setSavedSuccess(msg)
     setTimeout(() => setSavedSuccess(null), 3000)
   }
@@ -256,8 +384,10 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
   }
 
   const handleResetDefaults = () => {
+    const isTheo = currentEmail?.toLowerCase() === 'theodoroskolokuthas@gmail.com'
+    const resetBase = isTheo ? THEODOROS_CUSTOM_RULES : DEFAULT_RULES
     if (!confirm('Επαναφορά όλων των κανόνων στις αρχικές προεπιλογές του GreekHost;')) return
-    saveRulesToStorage(DEFAULT_RULES, 'Έγινε επαναφορά στις αρχικές προεπιλογές!')
+    saveRulesToStorage(resetBase, 'Έγινε επαναφορά στις αρχικές προεπιλογές!')
   }
 
   const handleSaveEditedRule = (e: React.FormEvent) => {
@@ -429,7 +559,7 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
         </div>
       )}
 
-      {/* Rules List (Clean & Fast) */}
+      {/* Rules List (Clean, Fast, Scoped to Current User) */}
       <div className="grid grid-cols-1 gap-3.5">
         {rules.map((rule) => {
           const hasPhotos = rule.photos && rule.photos.length > 0
