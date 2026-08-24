@@ -344,37 +344,26 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
     const emailKey = currentEmail ? currentEmail.toLowerCase() : 'guest'
     const storageKey = `greekhost_rules_${emailKey}`
     const isTheo = emailKey === 'theodoroskolokuthas@gmail.com'
-
-    if (isTheo) {
-      // Always load Theodoros's exact 4 rules as the true master
-      let customTheo: AutomationRule[] = THEODOROS_CUSTOM_RULES
-      try {
-        const savedTheo = localStorage.getItem('greekhost_rules_theo_v2')
-        if (savedTheo) {
-          const parsed = JSON.parse(savedTheo)
-          if (Array.isArray(parsed) && parsed.length > 0) customTheo = parsed
-        }
-      } catch {}
-      setRules(customTheo)
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(customTheo))
-        localStorage.setItem('greekhost_automated_rules', JSON.stringify(customTheo))
-      } catch {}
-      return
-    }
+    const fallbackRules = isTheo ? THEODOROS_CUSTOM_RULES : DEFAULT_RULES
 
     let foundRules: AutomationRule[] | null = null
     try {
-      const local = localStorage.getItem(storageKey)
+      const local = localStorage.getItem(storageKey) || (isTheo ? localStorage.getItem('greekhost_rules_theo_v2') : null)
       if (local) {
-        foundRules = JSON.parse(local)
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          foundRules = parsed
+        }
       }
     } catch {}
 
-    if (foundRules && Array.isArray(foundRules) && foundRules.length > 0) {
+    if (foundRules) {
       setRules(foundRules)
     } else {
-      setRules(DEFAULT_RULES)
+      setRules(fallbackRules)
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(fallbackRules))
+      } catch {}
     }
 
     if (currentEmail) {
