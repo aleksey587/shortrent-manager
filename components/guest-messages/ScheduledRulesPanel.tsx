@@ -343,46 +343,38 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
   useEffect(() => {
     const emailKey = currentEmail ? currentEmail.toLowerCase() : 'guest'
     const storageKey = `greekhost_rules_${emailKey}`
-
     const isTheo = emailKey === 'theodoroskolokuthas@gmail.com'
-    const baseDefault = isTheo ? THEODOROS_CUSTOM_RULES : DEFAULT_RULES
+
+    if (isTheo) {
+      // Always load Theodoros's exact 4 rules as the true master
+      let customTheo: AutomationRule[] = THEODOROS_CUSTOM_RULES
+      try {
+        const savedTheo = localStorage.getItem('greekhost_rules_theo_v2')
+        if (savedTheo) {
+          const parsed = JSON.parse(savedTheo)
+          if (Array.isArray(parsed) && parsed.length > 0) customTheo = parsed
+        }
+      } catch {}
+      setRules(customTheo)
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(customTheo))
+        localStorage.setItem('greekhost_automated_rules', JSON.stringify(customTheo))
+      } catch {}
+      return
+    }
 
     let foundRules: AutomationRule[] | null = null
     try {
-      const keysToCheck = [
-        storageKey,
-        'greekhost_automated_rules',
-        'greekhost_rules_theodoroskolokuthas@gmail.com',
-        'greekhost_rules_guest',
-        'greekhost_custom_rules',
-        'custom_automation_rules'
-      ]
-      for (const k of keysToCheck) {
-        const item = localStorage.getItem(k)
-        if (item) {
-          try {
-            const parsed = JSON.parse(item)
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              foundRules = parsed
-              localStorage.setItem(storageKey, item)
-              break
-            }
-          } catch {}
-        }
+      const local = localStorage.getItem(storageKey)
+      if (local) {
+        foundRules = JSON.parse(local)
       }
     } catch {}
 
     if (foundRules && Array.isArray(foundRules) && foundRules.length > 0) {
       setRules(foundRules)
-      if (currentEmail) {
-        fetch('/api/user-rules', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: currentEmail, rules: foundRules }),
-        }).catch(() => {})
-      }
     } else {
-      setRules(baseDefault)
+      setRules(DEFAULT_RULES)
     }
 
     if (currentEmail) {
@@ -414,6 +406,9 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
 
     try {
       localStorage.setItem(storageKey, JSON.stringify(updated))
+      if (emailKey === 'theodoroskolokuthas@gmail.com') {
+        localStorage.setItem('greekhost_rules_theo_v2', JSON.stringify(updated))
+      }
     } catch {}
 
     // Sync to Cloud API
