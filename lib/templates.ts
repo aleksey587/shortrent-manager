@@ -42,20 +42,14 @@ export const DEFAULT_GUEST_TEMPLATES: MessageTemplate[] = [
     category: 'confirmation',
     language: 'en',
     icon: '🎉',
-    subject: 'Booking Confirmation — {{property_name}}',
-    body: `Hello {{guest_name}}! 🌿
+    subject: 'Booking Confirmation: {{property_name}}',
+    body: `Hope you are doing fine :)
 
-Thank you very much for booking your stay at {{property_name}}!
+Thank you so much for choosing my apartment !
 
-📋 Reservation Details:
-• Check-in: {{check_in}} (from {{check_in_time}})
-• Check-out: {{check_out}} (until {{check_out_time}})
-• Length of stay: {{nights}} nights
-• Address: {{property_address}}
+I am excited to have you !
 
-We will send you detailed check-in and access instructions a couple of days before your arrival.
-
-Feel free to reach out if you have any questions!
+All the information you might need regarding your reservation, for example: address, self- check in instructions, check in/out times, and much more, will be sent to you a day before your arrival.
 
 Warm regards,
 Your Host`
