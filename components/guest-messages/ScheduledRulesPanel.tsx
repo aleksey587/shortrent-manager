@@ -276,14 +276,25 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
     const isTheo = emailKey === 'theodoroskolokuthas@gmail.com'
     const baseDefault = isTheo ? THEODOROS_CUSTOM_RULES : DEFAULT_RULES
 
+    let foundRules: AutomationRule[] | null = null
     try {
       const local = localStorage.getItem(storageKey)
+      const legacy = localStorage.getItem('greekhost_automated_rules')
+
       if (local) {
-        setRules(JSON.parse(local))
-      } else {
-        setRules(baseDefault)
+        foundRules = JSON.parse(local)
+      } else if (legacy) {
+        foundRules = JSON.parse(legacy)
+        // Automatically migrate to user storage
+        localStorage.setItem(storageKey, legacy)
       }
     } catch {}
+
+    if (foundRules && Array.isArray(foundRules) && foundRules.length > 0) {
+      setRules(foundRules)
+    } else {
+      setRules(baseDefault)
+    }
 
     // Cloud fetch for multi-device sync
     if (currentEmail) {
@@ -295,6 +306,13 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
             try {
               localStorage.setItem(storageKey, JSON.stringify(data.rules))
             } catch {}
+          } else if (foundRules) {
+            // Push existing local rules to cloud
+            fetch('/api/user-rules', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: currentEmail, rules: foundRules }),
+            }).catch(() => {})
           }
         })
         .catch(() => {})
