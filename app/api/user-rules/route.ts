@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// In-memory multi-tenant cloud cache
-const userRulesCloudStore: Record<string, any[]> = {}
-
 const THEODOROS_CUSTOM_RULES = [
   // 1. Instant Confirmation
   {
@@ -261,21 +258,33 @@ Hope to welcome you back to Greece soon! 🇬🇷`,
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient()
     const email = (request.nextUrl.searchParams.get('email') || '').toLowerCase().trim()
 
-    if (!email) {
-      const supabase = await createClient()
+    let targetEmail = email
+    if (!targetEmail) {
       const { data: { user } } = await supabase.auth.getUser()
-      const userEmail = user?.email?.toLowerCase().trim()
-      if (userEmail) {
-        const rules = userRulesCloudStore[userEmail] || (userEmail === 'theodoroskolokuthas@gmail.com' ? THEODOROS_CUSTOM_RULES : null)
-        return NextResponse.json({ rules, email: userEmail }, { status: 200 })
-      }
-      return NextResponse.json({ rules: null }, { status: 200 })
+      targetEmail = user?.email?.toLowerCase().trim() || ''
+    }
+    if (!targetEmail) return NextResponse.json({ rules: null }, { status: 200 })
+
+    // Load from permanent DB table
+    const { data, error } = await supabase
+      .from('user_automation_rules')
+      .select('rules')
+      .eq('email', targetEmail)
+      .maybeSingle()
+
+    if (!error && data?.rules && Array.isArray(data.rules) && data.rules.length > 0) {
+      return NextResponse.json({ rules: data.rules, email: targetEmail, source: 'db' }, { status: 200 })
     }
 
-    const rules = userRulesCloudStore[email] || (email === 'theodoroskolokuthas@gmail.com' ? THEODOROS_CUSTOM_RULES : null)
-    return NextResponse.json({ rules, email }, { status: 200 })
+    // Fallback: return default rules for Theodoros if nothing saved yet
+    if (targetEmail === 'theodoroskolokuthas@gmail.com') {
+      return NextResponse.json({ rules: THEODOROS_CUSTOM_RULES, email: targetEmail, source: 'defaults' }, { status: 200 })
+    }
+
+    return NextResponse.json({ rules: null, email: targetEmail }, { status: 200 })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch rules' }, { status: 500 })
   }
@@ -286,16 +295,36 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const email = (body.email || '').toLowerCase().trim()
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    if (!body.rules || !Array.isArray(body.rules)) return NextResponse.json({ error: 'Rules required' }, { status: 400 })
+
+    const supabase = await createClient()
+
+    // Strip base64 data-URLs from photos before saving to DB (they are too large)
+    // Keep only external https:// URLs and /callisto/... static paths
+    const sanitizedRules = body.rules.map((rule: any) => ({
+      ...rule,
+      photos: (rule.photos || []).map((photo: any) => ({
+        ...photo,
+        url: photo.url?.startsWith('data:') ? '' : (photo.url || ''),
+      })).filter((p: any) => p.url !== ''), // Remove photos that only had base64
+    }))
+
+    // Save permanently to Supabase DB
+    const { error } = await supabase
+      .from('user_automation_rules')
+      .upsert(
+        { email, rules: sanitizedRules, updated_at: new Date().toISOString() },
+        { onConflict: 'email' }
+      )
+
+    if (error) {
+      console.error('[user-rules] DB save error:', error.message)
+      return NextResponse.json({ error: 'Failed to save to DB: ' + error.message }, { status: 500 })
     }
 
-    if (body.rules && Array.isArray(body.rules)) {
-      userRulesCloudStore[email] = body.rules
-    }
-
-    return NextResponse.json({ success: true, email }, { status: 200 })
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to save rules' }, { status: 500 })
+    return NextResponse.json({ success: true, email, saved: sanitizedRules.length }, { status: 200 })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message ?? 'Failed to save rules' }, { status: 500 })
   }
 }
