@@ -102,9 +102,13 @@ export async function GET(request: NextRequest) {
       for (const booking of bookings) {
         const existing = existingMap.get(booking.ical_uid)
         if (existing) {
-          if (existing.total_price && !booking.total_price) {
+          if (existing.total_price != null && existing.total_price > 0) {
             booking.total_price = existing.total_price
             booking.price_per_night = existing.price_per_night
+            booking.cleaning_fee = existing.cleaning_fee ?? booking.cleaning_fee
+          }
+          if (existing.source === 'csv') {
+            booking.source = 'csv'
           }
           if (existing.guest_name && (!booking.guest_name || booking.guest_name.includes('Επισκέπτης'))) {
             booking.guest_name = existing.guest_name

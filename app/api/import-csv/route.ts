@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
             price_per_night: item.price_per_night ?? match.price_per_night,
             platform: item.platform || match.platform,
             notes: item.confirmation_code ? `Κωδικός: ${item.confirmation_code}` : match.notes,
+            source: 'csv',
           })
           .eq('id', match.id)
 
