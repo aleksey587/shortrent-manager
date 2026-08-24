@@ -299,14 +299,38 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
 
     let foundRules: AutomationRule[] | null = null
     try {
-      const local = localStorage.getItem(storageKey)
-      if (local) {
-        foundRules = JSON.parse(local)
+      const keysToCheck = [
+        storageKey,
+        'greekhost_automated_rules',
+        'greekhost_rules_theodoroskolokuthas@gmail.com',
+        'greekhost_rules_guest',
+        'greekhost_custom_rules',
+        'custom_automation_rules'
+      ]
+      for (const k of keysToCheck) {
+        const item = localStorage.getItem(k)
+        if (item) {
+          try {
+            const parsed = JSON.parse(item)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              foundRules = parsed
+              localStorage.setItem(storageKey, item)
+              break
+            }
+          } catch {}
+        }
       }
     } catch {}
 
     if (foundRules && Array.isArray(foundRules) && foundRules.length > 0) {
       setRules(foundRules)
+      if (currentEmail) {
+        fetch('/api/user-rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentEmail, rules: foundRules }),
+        }).catch(() => {})
+      }
     } else {
       setRules(baseDefault)
     }
