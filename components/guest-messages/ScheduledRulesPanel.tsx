@@ -473,20 +473,35 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
   }
 
   const formatRulePreview = (body: string) => {
-    if (!activeBooking || !activeProperty) return body
+    const address = activeProperty?.address || 'Παρασίου 28-30, Αθήνα'
+    const propertyName = activeProperty?.name || 'Callisto - Luxury Rooftop suite with jacuzzi'
+    const guestName = activeBooking?.guest_name || 'Alessandro'
+    const checkIn = activeBooking?.check_in ? format(parseISO(activeBooking.check_in), 'dd/MM/yyyy') : '18/07/2026'
+    const checkOut = activeBooking?.check_out ? format(parseISO(activeBooking.check_out), 'dd/MM/yyyy') : '20/07/2026'
+    const nights = activeBooking?.nights || 2
+    const checkInTime = activeProperty?.check_in_time || '15:00'
+    const checkOutTime = activeProperty?.check_out_time || '11:00'
+    const wifiName = activeProperty?.wifi_name || 'Callisto_Guest_WiFi'
+    const wifiPassword = activeProperty?.wifi_password || 'GreekHost2026!'
+    const lockboxCode = activeProperty?.lockbox_code || '3592'
+    const directions = activeProperty?.directions || 'Είσοδος με κλειδοθήκη στην κύρια είσοδο.'
+    const guideLink = `https://greekhost.vercel.app/guide/${activeProperty?.id || '1a88bb3e-bb36-412e-8390-34446b7617c0'}`
+
     return replaceTemplateVariables(body, {
-      guest_name: activeBooking.guest_name || 'Επισκέπτη',
-      property_name: activeProperty.name || 'Ακίνητο',
-      property_address: activeProperty.address || '—',
-      check_in: format(parseISO(activeBooking.check_in), 'dd/MM/yyyy'),
-      check_out: format(parseISO(activeBooking.check_out), 'dd/MM/yyyy'),
-      nights: activeBooking.nights || 1,
-      check_in_time: activeProperty.check_in_time || '15:00',
-      check_out_time: activeProperty.check_out_time || '11:00',
-      wifi_name: activeProperty.wifi_name || '—',
-      wifi_password: activeProperty.wifi_password || '—',
-      lockbox_code: activeProperty.lockbox_code || '—',
-      directions: activeProperty.directions || 'Είσοδος με κλειδοθήκη.',
+      guest_name: guestName,
+      property_name: propertyName,
+      property_address: address,
+      address: address,
+      check_in: checkIn,
+      check_out: checkOut,
+      nights: nights,
+      check_in_time: checkInTime,
+      check_out_time: checkOutTime,
+      wifi_name: wifiName,
+      wifi_password: wifiPassword,
+      lockbox_code: lockboxCode,
+      directions: directions,
+      guide_link: guideLink,
     })
   }
 

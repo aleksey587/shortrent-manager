@@ -246,6 +246,7 @@ export function replaceTemplateVariables(
     guest_name?: string
     property_name?: string
     property_address?: string
+    address?: string
     check_in?: string
     check_out?: string
     nights?: number | string
@@ -255,20 +256,24 @@ export function replaceTemplateVariables(
     wifi_password?: string
     lockbox_code?: string
     directions?: string
+    guide_link?: string
   }
 ): string {
   let result = template
+  const effectiveAddress = vars.address || vars.property_address || 'Παρασίου 28-30, Αθήνα'
   result = result.replace(/\{\{guest_name\}\}/g, vars.guest_name || 'Επισκέπτης')
-  result = result.replace(/\{\{property_name\}\}/g, vars.property_name || 'Ακίνητο')
-  result = result.replace(/\{\{property_address\}\}/g, vars.property_address || '—')
+  result = result.replace(/\{\{property_name\}\}/g, vars.property_name || 'Callisto')
+  result = result.replace(/\{\{property_address\}\}/g, effectiveAddress)
+  result = result.replace(/\{\{address\}\}/g, effectiveAddress)
   result = result.replace(/\{\{check_in\}\}/g, vars.check_in || '—')
   result = result.replace(/\{\{check_out\}\}/g, vars.check_out || '—')
   result = result.replace(/\{\{nights\}\}/g, String(vars.nights || 1))
   result = result.replace(/\{\{check_in_time\}\}/g, vars.check_in_time || '15:00')
   result = result.replace(/\{\{check_out_time\}\}/g, vars.check_out_time || '11:00')
-  result = result.replace(/\{\{wifi_name\}\}/g, vars.wifi_name || '—')
-  result = result.replace(/\{\{wifi_password\}\}/g, vars.wifi_password || '—')
-  result = result.replace(/\{\{lockbox_code\}\}/g, vars.lockbox_code || '—')
+  result = result.replace(/\{\{wifi_name\}\}/g, vars.wifi_name || 'Callisto_Guest_WiFi')
+  result = result.replace(/\{\{wifi_password\}\}/g, vars.wifi_password || 'GreekHost2026!')
+  result = result.replace(/\{\{lockbox_code\}\}/g, vars.lockbox_code || '3592')
   result = result.replace(/\{\{directions\}\}/g, vars.directions || 'Είσοδος με κλειδοθήκη στην κύρια είσοδο.')
+  result = result.replace(/\{\{guide_link\}\}/g, vars.guide_link || 'https://greekhost.vercel.app/guide/1a88bb3e-bb36-412e-8390-34446b7617c0')
   return result
 }
