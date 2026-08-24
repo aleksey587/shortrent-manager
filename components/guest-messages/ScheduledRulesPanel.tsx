@@ -460,35 +460,29 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
     setSyncingCloud(false)
   }
 
-  // Load User-Specific Rules from LocalStorage and Cloud API across all devices
+  // Load User-Specific Rules: Cloud DB is AUTHORITATIVE, localStorage is just offline cache
   useEffect(() => {
     const emailKey = currentEmail ? currentEmail.toLowerCase() : 'guest'
     const storageKey = `greekhost_rules_${emailKey}`
     const isTheo = emailKey === 'theodoroskolokuthas@gmail.com'
     const fallbackRules = isTheo ? THEODOROS_CUSTOM_RULES : DEFAULT_RULES
 
-    let foundRules: AutomationRule[] | null = null
-    try {
-      const local = localStorage.getItem(storageKey) || (isTheo ? localStorage.getItem('greekhost_rules_theo_v2') : null)
-      if (local) {
-        const parsed = JSON.parse(local)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          foundRules = parsed
-        }
-      }
-    } catch {}
-
-    if (foundRules) {
-      setRules(foundRules)
-    } else {
-      setRules(fallbackRules)
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(fallbackRules))
-      } catch {}
-    }
-
     if (currentEmail) {
+      // Always fetch from cloud first (DB is authoritative)
       fetchCloudRules(currentEmail)
+    } else {
+      // No email yet — try localStorage as temporary fallback
+      try {
+        const local = localStorage.getItem(storageKey) || (isTheo ? localStorage.getItem('greekhost_rules_theo_v2') : null)
+        if (local) {
+          const parsed = JSON.parse(local)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setRules(parsed)
+            return
+          }
+        }
+      } catch {}
+      setRules(fallbackRules)
     }
   }, [currentEmail])
 
