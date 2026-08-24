@@ -34,11 +34,12 @@ export interface AutomationRule {
   photos?: RulePhoto[]
 }
 
-// Theodoros Kolokuthas Exact Custom Account Rules (From Screenshots)
+// Theodoros Kolokuthas Complete 9-Rule Airbnb Automation Suite for Callisto
 const THEODOROS_CUSTOM_RULES: AutomationRule[] = [
+  // 1. Instant Confirmation
   {
     id: 'rule-booking-confirm',
-    title: 'Άμεση Επιβεβαίωση Κράτησης',
+    title: 'Άμεση Επιβεβαίωση Κράτησης (Booking Confirmation)',
     enabled: true,
     triggerType: 'instant_booking',
     offsetDays: 0,
@@ -70,15 +71,17 @@ Please do not hesitate to ask any questions you might have :)
 Safe travels !`,
     photos: [],
   },
+
+  // 2. Arrival & Transit Guide
   {
     id: 'rule-arrival-directions',
-    title: 'Arrival',
+    title: 'Arrival & Transit Guide (Οδηγίες Άφιξης & Μετρό)',
     enabled: true,
     triggerType: 'instant_booking',
     offsetDays: 0,
     sendTime: '12:00',
     channel: 'all',
-    icon: '💬',
+    icon: '✈️',
     subject: 'How to get here: {{property_name}}',
     body: `How to get here:
 
@@ -111,9 +114,11 @@ Children under 6 years: Free
 Option 2: Take bus 'X95' (runs 24/7) from the airport (€6) to Syntagma square. It takes about 50 minutes. At Syntagma station change onto the red line to 'Larissa station'.`,
     photos: [],
   },
+
+  // 3. Check-in & Lockbox Instructions with 4 Photos
   {
     id: 'rule-checkin-lockbox-photos',
-    title: 'Check-in & Lockbox',
+    title: 'Check-in & Lockbox (Οδηγίες Κλειδοθήκης με Φωτογραφίες)',
     enabled: true,
     triggerType: 'checkin_day',
     offsetDays: 0,
@@ -136,6 +141,77 @@ Have a wonderful stay!`,
       { id: 'p4', title: '🛋️ Callisto Luxury Rooftop Suite', url: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&auto=format&fit=crop&q=80' }
     ],
   },
+
+  // 4. Welcome, Wi-Fi & Jacuzzi Care
+  {
+    id: 'rule-welcome-wifi-jacuzzi',
+    title: 'Καλωσόρισμα, Wi-Fi & Jacuzzi (Ημέρα Άφιξης)',
+    enabled: true,
+    triggerType: 'checkin_day',
+    offsetDays: 0,
+    sendTime: '15:00',
+    channel: 'all',
+    icon: '📶',
+    subject: 'Welcome to {{property_name}} & Wi-Fi Details',
+    body: `Welcome to {{property_name}}! 🏠✨
+
+📶 Wi-Fi Network: {{wifi_name}}
+🔑 Password: {{wifi_password}}
+
+🛁 Jacuzzi Care & Tips:
+• Please take a quick shower before entering the jacuzzi.
+• Kindly turn off the jets/bubbles when not in use.
+
+📱 Digital House Manual & Local Tips: {{guide_link}}
+
+Wishing you a wonderful stay in Athens!`,
+    photos: [],
+  },
+
+  // 5. Mid-Stay Comfort Check
+  {
+    id: 'rule-midstay-comfort',
+    title: 'Έλεγχος Ικανοποίησης (Mid-Stay Comfort Check)',
+    enabled: true,
+    triggerType: 'mid_stay',
+    offsetDays: 1,
+    sendTime: '11:00',
+    channel: 'all',
+    icon: '☕',
+    subject: 'How is your stay going at {{property_name}}?',
+    body: `Good morning {{guest_name}}! ☀️
+
+I hope you are enjoying your time at {{property_name}} and having a fantastic experience exploring Athens!
+
+Please let me know if you need fresh towels, restaurant recommendations, or anything else to make your stay more comfortable.
+
+Enjoy your day!`,
+    photos: [],
+  },
+
+  // 6. Trash & House Care Reminder
+  {
+    id: 'rule-trash-guidelines',
+    title: 'Οδηγίες Καθαριότητας & Απορρίμματα (House Care)',
+    enabled: true,
+    triggerType: 'before_checkout',
+    offsetDays: 2,
+    sendTime: '14:00',
+    channel: 'all',
+    icon: '🗑️',
+    subject: 'Friendly reminder & House care: {{property_name}}',
+    body: `Hello {{guest_name}}! 🌿
+
+Hope you are having a pleasant stay.
+
+Just a quick friendly reminder regarding trash disposal:
+The large municipal waste bins are located just outside on Parasiou street.
+
+Please feel free to reach out if you need anything!`,
+    photos: [],
+  },
+
+  // 7. Check-out Instructions & Keys
   {
     id: 'rule-before-checkout-theo',
     title: 'Οδηγίες Αναχώρησης & Κλειδιά (1 ημέρα πριν το Check-out)',
@@ -165,6 +241,51 @@ Wish you the best :)
 
 
 Warmest regards, Theo`,
+    photos: [],
+  },
+
+  // 8. Morning of Check-out Reminder
+  {
+    id: 'rule-checkout-morning-reminder',
+    title: 'Υπενθύμιση Πρωί Αναχώρησης (Check-out Morning)',
+    enabled: true,
+    triggerType: 'before_checkout',
+    offsetDays: 0,
+    sendTime: '08:30',
+    channel: 'all',
+    icon: '⏰',
+    subject: 'Check-out Reminder for today: {{property_name}}',
+    body: `Good morning {{guest_name}}! ☀️
+
+Friendly reminder that check-out is today by {{check_out_time}} to allow our cleaning team to prepare the suite for the next guests.
+
+Please remember to:
+1. Turn off the A/C units and water heater
+2. Leave the keys on the table
+3. Close the door firmly behind you
+
+Have a safe trip back home! ✈️`,
+    photos: [],
+  },
+
+  // 9. 5-Star Review Request & Farewell
+  {
+    id: 'rule-after-checkout-review-request',
+    title: 'Ευχαριστήριο & Αίτημα Κριτικής 5★ (Μετά το Check-out)',
+    enabled: true,
+    triggerType: 'after_checkout',
+    offsetDays: 0,
+    sendTime: '15:00',
+    channel: 'all',
+    icon: '⭐',
+    subject: 'Thank you for staying at {{property_name}}! ⭐⭐⭐⭐⭐',
+    body: `Hello {{guest_name}}! 🌟
+
+Thank you so much once again for staying at {{property_name}}! It was a true pleasure hosting you.
+
+I will be leaving you a 5-star review as an exemplary guest. If you enjoyed your time and our hospitality, I would deeply appreciate it if you could leave a 5-star review on Airbnb as well — it helps our small hosting business immensely!
+
+Hope to welcome you back to Greece soon! 🇬🇷`,
     photos: [],
   },
 ]
