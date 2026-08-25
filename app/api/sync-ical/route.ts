@@ -81,6 +81,10 @@ export async function POST(request: NextRequest) {
 
     let added = 0
     let updated = 0
+    let cancelled = 0
+
+    // Collect UIDs that are currently in the iCal feed
+    const activeUids = new Set(bookings.map(b => b.ical_uid).filter(Boolean))
 
     for (const booking of bookings) {
       const existing = existingMap.get(booking.ical_uid)
@@ -110,13 +114,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // CANCELLATION DETECTION: Delete iCal bookings that no longer exist in the feed
+    // Only delete bookings from this specific platform (don't touch manual/csv bookings)
+    const existingIcalUids = [...existingMap.keys()]
+    const cancelledUids = existingIcalUids.filter(uid => !activeUids.has(uid))
+
+    if (cancelledUids.length > 0) {
+      // Only delete ical-sourced bookings, never csv or manual
+      const { data: toDelete } = await supabase
+        .from('bookings')
+        .select('id, ical_uid, source')
+        .eq('property_id', propertyId)
+        .eq('platform', source.platform)
+        .in('ical_uid', cancelledUids)
+
+      const icalOnlyIds = (toDelete || [])
+        .filter(b => b.source === 'ical' || b.source === null)
+        .map(b => b.id)
+
+      if (icalOnlyIds.length > 0) {
+        await supabase.from('bookings').delete().in('id', icalOnlyIds)
+        cancelled = icalOnlyIds.length
+      }
+    }
+
     // Update last_synced_at
     await supabase
       .from('ical_sources')
       .update({ last_synced_at: new Date().toISOString() })
       .eq('id', sourceId)
 
-    return NextResponse.json({ success: true, added, updated, total: bookings.length })
+    return NextResponse.json({ success: true, added, updated, cancelled, total: bookings.length })
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? 'Unknown error' }, { status: 500 })
   }
