@@ -12,6 +12,7 @@ import { el } from 'date-fns/locale'
 import { isProUser } from '@/lib/permissions'
 import ProFeatureModal from '@/components/ui/ProFeatureModal'
 import { replaceTemplateVariables } from '@/lib/templates'
+import { openWhatsAppMessage } from '@/lib/utils'
 
 export interface RulePhoto {
   id: string
@@ -714,8 +715,12 @@ export default function ScheduledRulesPanel({ userEmail, bookings = [], properti
   }
 
   const handleSendWhatsApp = (text: string) => {
-    const encoded = encodeURIComponent(text)
-    window.open(`https://wa.me/?text=${encoded}`, '_blank')
+    try {
+      navigator.clipboard.writeText(text)
+    } catch {}
+    openWhatsAppMessage(text)
+    setSavedSuccess('📱 Άνοιγμα WhatsApp! Το μήνυμα αντιγράφηκε και στο πρόχειρο (Clipboard).')
+    setTimeout(() => setSavedSuccess(null), 4000)
   }
 
   const handleCopyText = (text: string, id: string) => {
