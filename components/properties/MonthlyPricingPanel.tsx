@@ -118,9 +118,12 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
     e.preventDefault()
     setSaving(true)
     setSaved(false)
-
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
+    let userId = user?.id
+    if (!userId) {
+      const { data: pData } = await supabase.from('properties').select('user_id').eq('id', propertyId).single()
+      userId = pData?.user_id || '00000000-0000-0000-0000-000000000000'
+    }
 
     // 1. Update cleaning fee on property
     const cleanNum = cleaningFee ? parseFloat(cleaningFee) : 0
@@ -146,7 +149,7 @@ export default function MonthlyPricingPanel({ propertyId, propertyName, initialC
         .upsert(
           {
             property_id: propertyId,
-            user_id: user.id,
+            user_id: userId,
             year,
             month,
             price_per_night: price,

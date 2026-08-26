@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const magicCookie = req.cookies.get('greekhost_magic_user')?.value
+    
+    if (!user && !magicCookie) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
