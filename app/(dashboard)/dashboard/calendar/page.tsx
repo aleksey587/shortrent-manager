@@ -54,6 +54,8 @@ export default function CalendarPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
 
   const [monthlyRates, setMonthlyRates] = useState<any[]>([])
+  const [isSyncingIcal, setIsSyncingIcal] = useState(false)
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -72,6 +74,37 @@ export default function CalendarPage() {
     setBookings(books ?? [])
     setMonthlyRates(ratesData ?? [])
     setLoading(false)
+  }
+
+  const handleSyncAll = async () => {
+    setIsSyncingIcal(true)
+    setSyncStatusMsg(null)
+    try {
+      const propIds = properties.map(p => p.id)
+      let totalAdded = 0
+      let totalUpdated = 0
+      let totalCancelled = 0
+      
+      for (const pid of propIds) {
+        const res = await fetch('/api/sync-ical', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ propertyId: pid }),
+        })
+        const data = await res.json()
+        if (data.added) totalAdded += data.added
+        if (data.updated) totalUpdated += data.updated
+        if (data.cancelled) totalCancelled += data.cancelled
+      }
+
+      await fetchData()
+      setSyncStatusMsg(`✅ Ο συγχρονισμός ολοκληρώθηκε! (${totalAdded} νέες, ${totalCancelled} ακυρωμένες)`)
+      setTimeout(() => setSyncStatusMsg(null), 5000)
+    } catch {
+      setSyncStatusMsg('❌ Σφάλμα κατά τον συγχρονισμό iCal.')
+      setTimeout(() => setSyncStatusMsg(null), 5000)
+    }
+    setIsSyncingIcal(false)
   }
 
   const toggleProperty = (id: string) => {
@@ -165,8 +198,18 @@ export default function CalendarPage() {
           </p>
         </div>
 
-        {/* View Switcher: Grid vs Timeline */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        {/* View Switcher: Grid vs Timeline & Direct Sync Button */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+          <button
+            onClick={handleSyncAll}
+            disabled={isSyncingIcal || properties.length === 0}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
+            title="Άμεσος συγχρονισμός κρατήσεων από Booking.com & Airbnb iCal feeds"
+          >
+            <RefreshCw size={14} className={isSyncingIcal ? 'animate-spin' : ''} />
+            <span>{isSyncingIcal ? 'Συγχρονισμός...' : 'Συγχρονισμός (iCal)'}</span>
+          </button>
+
           <div className="flex items-center bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
             <button
               onClick={() => setViewMode('grid')}
@@ -196,6 +239,16 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
+
+      {syncStatusMsg && (
+        <div className={`p-3.5 rounded-2xl text-xs font-bold border transition-all ${
+          syncStatusMsg.startsWith('✅')
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-xs'
+            : 'bg-red-50 text-red-800 border-red-200'
+        }`}>
+          {syncStatusMsg}
+        </div>
+      )}
 
       {/* Filters Bar: Properties & Platforms */}
       <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3">

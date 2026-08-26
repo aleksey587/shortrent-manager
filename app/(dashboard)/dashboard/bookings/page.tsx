@@ -75,6 +75,8 @@ export default function BookingsPage() {
   const [ratesCache, setRatesCache] = useState<Record<string, Record<number, Record<number, number>>>>({})
 
   const [form, setForm] = useState(EMPTY_FORM)
+  const [isSyncingIcal, setIsSyncingIcal] = useState(false)
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -97,6 +99,37 @@ export default function BookingsPage() {
       }))
     }
     setLoading(false)
+  }
+
+  const handleSyncAll = async () => {
+    setIsSyncingIcal(true)
+    setSyncStatusMsg(null)
+    try {
+      const propIds = properties.map(p => p.id)
+      let totalAdded = 0
+      let totalUpdated = 0
+      let totalCancelled = 0
+      
+      for (const pid of propIds) {
+        const res = await fetch('/api/sync-ical', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ propertyId: pid }),
+        })
+        const data = await res.json()
+        if (data.added) totalAdded += data.added
+        if (data.updated) totalUpdated += data.updated
+        if (data.cancelled) totalCancelled += data.cancelled
+      }
+
+      await fetchData()
+      setSyncStatusMsg(`✅ Ο συγχρονισμός ολοκληρώθηκε! (${totalAdded} νέες, ${totalCancelled} ακυρωμένες)`)
+      setTimeout(() => setSyncStatusMsg(null), 5000)
+    } catch {
+      setSyncStatusMsg('❌ Σφάλμα κατά τον συγχρονισμό iCal.')
+      setTimeout(() => setSyncStatusMsg(null), 5000)
+    }
+    setIsSyncingIcal(false)
   }
 
   // Load monthly rates for a property when needed
@@ -474,6 +507,15 @@ export default function BookingsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleSyncAll}
+            disabled={isSyncingIcal || properties.length === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
+            title="Άμεσος συγχρονισμός κρατήσεων από Booking.com & Airbnb iCal feeds"
+          >
+            <RefreshCw size={14} className={isSyncingIcal ? 'animate-spin' : ''} />
+            <span>{isSyncingIcal ? 'Συγχρονισμός...' : 'Συγχρονισμός (iCal)'}</span>
+          </button>
           {properties.length > 0 && (
             <ImportCsvModal properties={properties} onSuccess={fetchData} />
           )}
@@ -495,6 +537,16 @@ export default function BookingsPage() {
           </button>
         </div>
       </div>
+
+      {syncStatusMsg && (
+        <div className={`p-3.5 rounded-2xl text-xs font-bold border transition-all ${
+          syncStatusMsg.startsWith('✅')
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-xs'
+            : 'bg-red-50 text-red-800 border-red-200'
+        }`}>
+          {syncStatusMsg}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">

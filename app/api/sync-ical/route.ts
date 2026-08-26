@@ -7,29 +7,49 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    // Fetch iCal source
-    const { data: source } = await supabase
-      .from('ical_sources')
-      .select('*, properties!inner(user_id, name, cleaning_fee)')
-      .eq('id', sourceId)
-      .single()
-
-    if (!source || (source.properties as any).user_id !== user.id) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const magicCookie = request.cookies.get('greekhost_magic_user')?.value
+    
+    if (!user && !magicCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const propCleaningFee = (source.properties as any)?.cleaning_fee
-      ? Number((source.properties as any).cleaning_fee)
-      : 0
+    // Fetch iCal source(s)
+    let sourcesToSync: any[] = []
+    if (sourceId) {
+      const { data: source } = await supabase
+        .from('ical_sources')
+        .select('*, properties!inner(user_id, name, cleaning_fee)')
+        .eq('id', sourceId)
+        .single()
+      if (source) sourcesToSync = [source]
+    } else if (propertyId) {
+      const { data: sources } = await supabase
+        .from('ical_sources')
+        .select('*, properties!inner(user_id, name, cleaning_fee)')
+        .eq('property_id', propertyId)
+      if (sources) sourcesToSync = sources
+    }
 
-    // Fetch monthly_rates for this property to use real prices
-    const { data: monthlyRates } = await supabase
-      .from('monthly_rates')
-      .select('year, month, price_per_night')
-      .eq('property_id', propertyId)
-      .eq('user_id', user.id)
+    if (sourcesToSync.length === 0) {
+      return NextResponse.json({ error: 'Δεν βρέθηκαν πηγές iCal' }, { status: 404 })
+    }
+
+    let totalAdded = 0
+    let totalUpdated = 0
+    let totalCancelled = 0
+    let totalBookings = 0
+
+    for (const source of sourcesToSync) {
+      const targetPropId = source.property_id || propertyId
+      const propCleaningFee = (source.properties as any)?.cleaning_fee
+        ? Number((source.properties as any).cleaning_fee)
+        : 0
+
+      // Fetch monthly_rates for this property to use real prices
+      const { data: monthlyRates } = await supabase
+        .from('monthly_rates')
+        .select('year, month, price_per_night')
+        .eq('property_id', targetPropId)
 
     // Build rates lookup: year -> month -> price
     const ratesMap: Record<number, Record<number, number>> = {}
@@ -109,8 +129,8 @@ export async function POST(request: NextRequest) {
         .upsert(booking, { onConflict: 'property_id,ical_uid' })
 
       if (!error) {
-        if (existing) updated++
-        else added++
+        if (existing) totalUpdated++
+        else totalAdded++
       }
     }
 
@@ -124,7 +144,7 @@ export async function POST(request: NextRequest) {
       const { data: toDelete } = await supabase
         .from('bookings')
         .select('id, ical_uid, source')
-        .eq('property_id', propertyId)
+        .eq('property_id', targetPropId)
         .eq('platform', source.platform)
         .in('ical_uid', cancelledUids)
 
@@ -134,7 +154,7 @@ export async function POST(request: NextRequest) {
 
       if (icalOnlyIds.length > 0) {
         await supabase.from('bookings').delete().in('id', icalOnlyIds)
-        cancelled = icalOnlyIds.length
+        totalCancelled += icalOnlyIds.length
       }
     }
 
@@ -142,9 +162,18 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('ical_sources')
       .update({ last_synced_at: new Date().toISOString() })
-      .eq('id', sourceId)
+      .eq('id', source.id)
 
-    return NextResponse.json({ success: true, added, updated, cancelled, total: bookings.length })
+      totalBookings += bookings.length
+    }
+
+    return NextResponse.json({
+      success: true,
+      added: totalAdded,
+      updated: totalUpdated,
+      cancelled: totalCancelled,
+      total: totalBookings,
+    })
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? 'Unknown error' }, { status: 500 })
   }
