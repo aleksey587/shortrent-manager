@@ -62,6 +62,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/reset-password') ||
     pathname.startsWith('/guide') ||
+    pathname.startsWith('/callisto') ||
     pathname.startsWith('/api') ||
     pathname === '/manifest.json' ||
     pathname === '/favicon.ico' ||
