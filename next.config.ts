@@ -4,6 +4,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/callisto',
+        destination: '/callisto/index.html',
+      },
+    ];
+  },
   async headers() {
     return [
       {
