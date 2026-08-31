@@ -18,13 +18,19 @@ export default function AutoSyncManager() {
 
         const supabase = createClient()
         const { data: props } = await supabase.from('properties').select('id')
-        if (!props || props.length === 0) return
-
-        for (const p of props) {
+        if (props && props.length > 0) {
+          for (const p of props) {
+            await fetch('/api/sync-ical', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ propertyId: p.id }),
+            }).catch(() => {})
+          }
+        } else {
           await fetch('/api/sync-ical', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ propertyId: p.id }),
+            body: JSON.stringify({}),
           }).catch(() => {})
         }
 

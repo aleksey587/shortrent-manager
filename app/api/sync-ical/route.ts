@@ -28,6 +28,11 @@ export async function POST(request: NextRequest) {
         .select('*, properties!inner(user_id, name, cleaning_fee)')
         .eq('property_id', propertyId)
       if (sources) sourcesToSync = sources
+    } else {
+      const { data: allSources } = await supabase
+        .from('ical_sources')
+        .select('*, properties!inner(user_id, name, cleaning_fee)')
+      if (allSources) sourcesToSync = allSources
     }
 
     if (sourcesToSync.length === 0) {

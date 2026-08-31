@@ -34,11 +34,12 @@ export async function GET(request: NextRequest) {
 
   for (const source of sources ?? []) {
     try {
-      // Skip if synced in the last 30 minutes (avoid rapid duplicate syncs)
-      if (source.last_synced_at) {
+      // Skip if synced in the last 2 minutes (unless force param is present)
+      const isForce = request.nextUrl.searchParams.get('force') === 'true' || request.nextUrl.searchParams.get('force') === '1'
+      if (source.last_synced_at && !isForce) {
         const lastSync = new Date(source.last_synced_at).getTime()
-        const thirtyMinsAgo = Date.now() - 30 * 60 * 1000
-        if (lastSync > thirtyMinsAgo) {
+        const twoMinsAgo = Date.now() - 2 * 60 * 1000
+        if (lastSync > twoMinsAgo) {
           results.skipped++
           continue
         }
