@@ -1,31 +1,56 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { Home, Calendar, TrendingUp, AlertCircle, Euro } from 'lucide-react'
 import { getUpcomingDeadlines } from '@/lib/aade'
 import { format } from 'date-fns'
 import { el } from 'date-fns/locale'
 import Link from 'next/link'
+import { resolveUserId } from '@/lib/permissions'
 
 const MONTH_NAMES = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ']
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [{ data: { user } }, cookieStore] = await Promise.all([
+    supabase.auth.getUser(),
+    cookies(),
+  ])
+  const magicCookie = cookieStore.get('greekhost_magic_user')?.value
+  const targetUserId = resolveUserId(user, magicCookie)
 
   const today = new Date()
   const currentYear = today.getFullYear()
   const currentMonth = today.getMonth() + 1
 
-  // Fetch stats
-  const [{ data: properties }, { data: bookingsThisYear }, { data: allBookings }] = await Promise.all([
-    supabase.from('properties').select('id, name, color'),
-    supabase
-      .from('bookings')
-      .select('id, check_in, check_out, total_price, property_id, nights')
-      .gte('check_in', `${currentYear}-01-01`)
-      .lte('check_in', `${currentYear}-12-31`),
-    supabase
-      .from('bookings')
-      .select('id, check_in, check_out, total_price, property_id'),
+  let propQuery = supabase.from('properties').select('id, name, color')
+  if (targetUserId) {
+    propQuery = propQuery.eq('user_id', targetUserId)
+  }
+
+  const { data: properties } = await propQuery
+  const propIds = (properties || []).map(p => p.id)
+
+  let yearQuery = supabase
+    .from('bookings')
+    .select('id, check_in, check_out, total_price, property_id, nights')
+    .gte('check_in', `${currentYear}-01-01`)
+    .lte('check_in', `${currentYear}-12-31`)
+
+  let allQuery = supabase
+    .from('bookings')
+    .select('id, check_in, check_out, total_price, property_id')
+
+  if (propIds.length > 0) {
+    yearQuery = yearQuery.in('property_id', propIds)
+    allQuery = allQuery.in('property_id', propIds)
+  } else {
+    yearQuery = yearQuery.eq('property_id', '00000000-0000-0000-0000-000000000000')
+    allQuery = allQuery.eq('property_id', '00000000-0000-0000-0000-000000000000')
+  }
+
+  const [{ data: bookingsThisYear }, { data: allBookings }] = await Promise.all([
+    yearQuery,
+    allQuery,
   ])
 
   const totalProperties = properties?.length ?? 0

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import {
   getUpcomingDeadlines,
   getCurrentQuarter,
@@ -16,25 +17,47 @@ import Requirements2025 from '@/components/aade/Requirements2025'
 import ExportPDF from '@/components/aade/ExportPDF'
 import TaxCalculatorHub from '@/components/aade/TaxCalculatorHub'
 import TaxObligationsSummary from '@/components/aade/TaxObligationsSummary'
+import { resolveUserId } from '@/lib/permissions'
 
 export default async function AadePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [{ data: { user } }, cookieStore] = await Promise.all([
+    supabase.auth.getUser(),
+    cookies(),
+  ])
+  const magicCookie = cookieStore.get('greekhost_magic_user')?.value
+  const targetUserId = resolveUserId(user, magicCookie)
 
   const deadlines = getUpcomingDeadlines(6)
   const { quarter: currentQ, year: currentYear } = getCurrentQuarter()
 
-  // Fetch properties and bookings
-  const [{ data: properties }, { data: bookings }, { data: declarations }] = await Promise.all([
-    supabase.from('properties').select('id, name, color'),
-    supabase
-      .from('bookings')
-      .select('id, property_id, guest_name, check_in, check_out, nights, total_price, platform')
-      .order('check_in', { ascending: false }),
-    supabase
-      .from('aade_declarations')
-      .select('*')
-      .eq('user_id', user!.id),
+  let propQuery = supabase.from('properties').select('id, name, color')
+  if (targetUserId) {
+    propQuery = propQuery.eq('user_id', targetUserId)
+  }
+
+  const { data: properties } = await propQuery
+  const propIds = (properties || []).map(p => p.id)
+
+  let booksQuery = supabase
+    .from('bookings')
+    .select('id, property_id, guest_name, check_in, check_out, nights, total_price, platform')
+    .order('check_in', { ascending: false })
+
+  if (propIds.length > 0) {
+    booksQuery = booksQuery.in('property_id', propIds)
+  } else {
+    booksQuery = booksQuery.eq('property_id', '00000000-0000-0000-0000-000000000000')
+  }
+
+  let declQuery = supabase.from('aade_declarations').select('*')
+  if (targetUserId) {
+    declQuery = declQuery.eq('user_id', targetUserId)
+  }
+
+  const [{ data: bookings }, { data: declarations }] = await Promise.all([
+    booksQuery,
+    declQuery,
   ])
 
   // Upcoming deadlines (not overdue)

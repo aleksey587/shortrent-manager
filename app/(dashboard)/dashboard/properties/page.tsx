@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import MonthlyPricingPanel from '@/components/properties/MonthlyPricingPanel'
 import ChannelConnectModal from '@/components/properties/ChannelConnectModal'
-import { isSuperAdmin, isProUser, getUserTier, getMaxPropertiesAllowed } from '@/lib/permissions'
+import { isSuperAdmin, isProUser, getUserTier, getMaxPropertiesAllowed, resolveUserId } from '@/lib/permissions'
 
 const PLATFORM_LABELS: Record<string, { label: string; color: string }> = {
   airbnb: { label: 'Airbnb', color: 'bg-red-100 text-red-700' },
@@ -87,13 +87,34 @@ export default function PropertiesPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: props }, { data: icals }, { data: { user } }] = await Promise.all([
-      supabase.from('properties').select('*').order('created_at'),
-      supabase.from('ical_sources').select('*'),
-      supabase.auth.getUser(),
-    ])
-    if (user?.email) setUserEmail(user.email)
+    const { data: { user } } = await supabase.auth.getUser()
+    const targetUserId = resolveUserId(user)
+    
+    if (user?.email) {
+      setUserEmail(user.email)
+    } else if (typeof document !== 'undefined') {
+      const match = document.cookie.match(/greekhost_magic_user=([^;]+)/)
+      if (match) setUserEmail(decodeURIComponent(match[1]))
+    }
+
+    let propQuery = supabase.from('properties').select('*').order('created_at')
+    if (targetUserId) {
+      propQuery = propQuery.eq('user_id', targetUserId)
+    }
+
+    const { data: props } = await propQuery
     const fetchedProps = props ?? []
+    const propIds = fetchedProps.map(p => p.id)
+
+    let icalsQuery = supabase.from('ical_sources').select('*')
+    if (propIds.length > 0) {
+      icalsQuery = icalsQuery.in('property_id', propIds)
+    } else {
+      icalsQuery = icalsQuery.eq('property_id', '00000000-0000-0000-0000-000000000000')
+    }
+
+    const { data: icals } = await icalsQuery
+
     const fetchedIcals = icals ?? []
     setProperties(fetchedProps)
     setIcalSources(fetchedIcals)

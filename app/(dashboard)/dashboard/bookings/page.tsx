@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import { el } from 'date-fns/locale'
 import ShareBookingModal from '@/components/bookings/ShareBookingModal'
 import ImportCsvModal from '@/components/bookings/ImportCsvModal'
-import { isSuperAdmin, isProUser as checkIsProUser } from '@/lib/permissions'
+import { isSuperAdmin, isProUser as checkIsProUser, resolveUserId } from '@/lib/permissions'
 
 const PLATFORM_LABELS: Record<string, string> = {
   airbnb: 'Airbnb',
@@ -82,16 +82,35 @@ export default function BookingsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: props }, { data: books }, { data: { user } }] = await Promise.all([
-      supabase.from('properties').select('id, name, color, ama_number, cleaning_fee').order('created_at'),
-      supabase.from('bookings').select('*').order('check_in', { ascending: true }),
-      supabase.auth.getUser(),
-    ])
-    setProperties(props ?? [])
+    const { data: { user } } = await supabase.auth.getUser()
+    const targetUserId = resolveUserId(user)
+    
+    let propQuery = supabase.from('properties').select('id, name, color, ama_number, cleaning_fee').order('created_at')
+    if (targetUserId) {
+      propQuery = propQuery.eq('user_id', targetUserId)
+    }
+
+    const { data: props } = await propQuery
+    const fetchedProps = props ?? []
+    const propIds = fetchedProps.map(p => p.id)
+
+    let booksQuery = supabase.from('bookings').select('*').order('check_in', { ascending: true })
+    if (propIds.length > 0) {
+      booksQuery = booksQuery.in('property_id', propIds)
+    } else {
+      booksQuery = booksQuery.eq('property_id', '00000000-0000-0000-0000-000000000000')
+    }
+
+    const { data: books } = await booksQuery
+
+    setProperties(fetchedProps)
     setBookings(books ?? [])
-    if (user && checkIsProUser(user.email)) setIsProUser(true)
-    if (props && props.length > 0 && !form.property_id) {
-      const firstProp = props[0]
+    
+    const userEmail = user?.email || (typeof document !== 'undefined' ? decodeURIComponent(document.cookie.match(/greekhost_magic_user=([^;]+)/)?.[1] || '') : '')
+    if (userEmail && checkIsProUser(userEmail)) setIsProUser(true)
+
+    if (fetchedProps && fetchedProps.length > 0 && !form.property_id) {
+      const firstProp = fetchedProps[0]
       setForm(f => ({
         ...f,
         property_id: firstProp.id,

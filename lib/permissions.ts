@@ -19,6 +19,27 @@ export const PAID_SUBSCRIBERS: UserSubscription[] = [
   },
 ]
 
+export const USER_ID_MAP: Record<string, string> = {
+  'theodoroskolokuthas@gmail.com': 'df2b28d9-5964-4efd-a2be-e9edf5de02a8',
+  'demo@greekhost.gr': '1ab5df3a-8fc0-450e-9283-3fc7bd5ca4cb',
+}
+
+export function resolveUserId(user?: any, cookieEmail?: string | null): string | null {
+  if (user?.id) return user.id
+  if (cookieEmail) {
+    const clean = cookieEmail.toLowerCase().trim()
+    if (USER_ID_MAP[clean]) return USER_ID_MAP[clean]
+  }
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/greekhost_magic_user=([^;]+)/)
+    if (match) {
+      const clean = decodeURIComponent(match[1]).toLowerCase().trim()
+      if (USER_ID_MAP[clean]) return USER_ID_MAP[clean]
+    }
+  }
+  return null
+}
+
 export function isSuperAdmin(email?: string | null): boolean {
   if (!email) return false
   return SUPER_ADMIN_EMAILS.includes(email.toLowerCase().trim())

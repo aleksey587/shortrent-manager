@@ -12,7 +12,7 @@ import {
 } from 'date-fns'
 import { el } from 'date-fns/locale'
 import Link from 'next/link'
-import { isProUser } from '@/lib/permissions'
+import { isProUser, resolveUserId } from '@/lib/permissions'
 import ProFeatureModal from '@/components/ui/ProFeatureModal'
 
 interface Booking {
@@ -61,14 +61,41 @@ export default function CalendarPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: { user } }, { data: props }, { data: books }, { data: ratesData }] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.from('properties').select('id, name, color').order('created_at'),
-      supabase.from('bookings').select('id, property_id, guest_name, check_in, check_out, platform, total_price, nights'),
-      supabase.from('monthly_rates').select('*'),
-    ])
-    if (user?.email) setUserEmail(user.email)
+    const { data: { user } } = await supabase.auth.getUser()
+    const targetUserId = resolveUserId(user)
+    
+    if (user?.email) {
+      setUserEmail(user.email)
+    } else if (typeof document !== 'undefined') {
+      const match = document.cookie.match(/greekhost_magic_user=([^;]+)/)
+      if (match) setUserEmail(decodeURIComponent(match[1]))
+    }
+
+    let propQuery = supabase.from('properties').select('id, name, color').order('created_at')
+    if (targetUserId) {
+      propQuery = propQuery.eq('user_id', targetUserId)
+    }
+
+    const { data: props } = await propQuery
     const fetchedProps = props ?? []
+    const propIds = fetchedProps.map(p => p.id)
+
+    let booksQuery = supabase.from('bookings').select('id, property_id, guest_name, check_in, check_out, platform, total_price, nights')
+    let ratesQuery = supabase.from('monthly_rates').select('*')
+
+    if (propIds.length > 0) {
+      booksQuery = booksQuery.in('property_id', propIds)
+      ratesQuery = ratesQuery.in('property_id', propIds)
+    } else {
+      booksQuery = booksQuery.eq('property_id', '00000000-0000-0000-0000-000000000000')
+      ratesQuery = ratesQuery.eq('property_id', '00000000-0000-0000-0000-000000000000')
+    }
+
+    const [{ data: books }, { data: ratesData }] = await Promise.all([
+      booksQuery,
+      ratesQuery,
+    ])
+
     setProperties(fetchedProps)
     setSelectedProperties(new Set(fetchedProps.map(p => p.id)))
     setBookings(books ?? [])
