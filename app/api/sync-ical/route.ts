@@ -239,11 +239,6 @@ function parseIcal(
     const endMs = new Date(checkOut).getTime()
     const nights = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)))
 
-    // If a single reservation is excessively long (>60 nights) and has no real guest name, it's likely a seasonal block
-    if (nights > 60 && (!summary || summaryLower.includes('reserved'))) {
-      continue
-    }
-
     // Use real monthly rate if available, otherwise seasonal estimate
     const ratePerNight = getRateForDate(checkIn)
     const estimatedTotal = parseFloat(((nights * ratePerNight) + cleaningFee).toFixed(2))
