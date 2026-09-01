@@ -212,9 +212,20 @@ function parseIcal(
     const uid = getField('UID')
     const dtstart = getField('DTSTART')
     const dtend = getField('DTEND')
-    const summary = getField('SUMMARY')
+    const summary = getField('SUMMARY') || ''
+    const summaryLower = summary.toLowerCase().trim()
 
     if (!uid || !dtstart || !dtend) continue
+
+    // Ignore calendar blocks / closed periods (not actual guest reservations)
+    if (
+      summaryLower.includes('closed') ||
+      summaryLower.includes('not available') ||
+      summaryLower.includes('blocked') ||
+      summaryLower.includes('unavailable')
+    ) {
+      continue
+    }
 
     const parseDate = (d: string): string => {
       const clean = d.replace(/[TZ]/g, '').replace(/[^0-9]/g, '')
@@ -228,12 +239,17 @@ function parseIcal(
     const endMs = new Date(checkOut).getTime()
     const nights = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)))
 
+    // If a single reservation is excessively long (>60 nights) and has no real guest name, it's likely a seasonal block
+    if (nights > 60 && (!summary || summaryLower.includes('reserved'))) {
+      continue
+    }
+
     // Use real monthly rate if available, otherwise seasonal estimate
     const ratePerNight = getRateForDate(checkIn)
     const estimatedTotal = parseFloat(((nights * ratePerNight) + cleaningFee).toFixed(2))
 
     let cleanGuest = summary || null
-    if (!cleanGuest || cleanGuest.toLowerCase().includes('reserved') || cleanGuest.toLowerCase().includes('not available')) {
+    if (!cleanGuest || summaryLower.includes('reserved')) {
       const platformName = platform === 'booking' ? 'Booking.com' : platform === 'vrbo' ? 'VRBO' : 'Airbnb'
       cleanGuest = `Επισκέπτης ${platformName}`
     } else {
