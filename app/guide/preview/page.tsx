@@ -442,7 +442,15 @@ export default function GuidebookPreviewPage() {
         <div className="bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/20 rounded-3xl p-5 text-center space-y-2">
           <h4 className="font-extrabold text-white text-sm">GreekHost Guest Experience</h4>
           <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-            Powered by GreekHost SaaS Platform · Engineered by <strong className="text-blue-400 font-bold">UpLogic</strong>
+            Powered by GreekHost SaaS Platform · Engineered by{' '}
+            <a
+              href="https://uplogic.gr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:underline font-bold"
+            >
+              UpLogic
+            </a>
           </p>
         </div>
       </div>

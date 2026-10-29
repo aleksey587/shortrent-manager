@@ -189,7 +189,15 @@ export default function WhatsNewModal() {
             {/* Footer */}
             <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
               <span className="text-[11px] text-gray-400 font-medium">
-                GreekHost Platform · Engineered & Powered by <strong className="text-indigo-600 font-extrabold">UpLogic</strong>
+                GreekHost Platform · Engineered & Powered by{' '}
+                <a
+                  href="https://uplogic.gr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 hover:underline font-extrabold"
+                >
+                  UpLogic
+                </a>
               </span>
               <button
                 onClick={() => setIsOpen(false)}

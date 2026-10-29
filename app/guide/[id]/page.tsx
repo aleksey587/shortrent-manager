@@ -598,7 +598,15 @@ export default function PublicGuestGuidebook() {
               : 'Είμαστε πάντα στη διάθεσή σας για οποιαδήποτε ερώτηση ή πληροφορία.'}
           </p>
           <p className="text-[10px] text-slate-500 pt-1">
-            GreekHost · Engineered & Powered by <strong className="text-blue-400 font-bold">UpLogic</strong>
+            GreekHost · Engineered & Powered by{' '}
+            <a
+              href="https://uplogic.gr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:underline font-bold"
+            >
+              UpLogic
+            </a>
           </p>
         </div>
       </div>

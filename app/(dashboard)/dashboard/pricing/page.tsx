@@ -349,7 +349,15 @@ export default function PricingPage() {
       {/* Powered by UpLogic Footer */}
       <div className="text-center pt-2">
         <p className="text-xs text-gray-400 font-medium">
-          GreekHost SaaS Platform · Engineered & Powered by <strong className="text-indigo-600 font-extrabold">UpLogic</strong>
+          GreekHost SaaS Platform · Engineered & Powered by{' '}
+          <a
+            href="https://uplogic.gr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 hover:underline font-extrabold"
+          >
+            UpLogic
+          </a>
         </p>
       </div>
     </div>

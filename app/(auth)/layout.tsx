@@ -11,9 +11,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         {children}
         <div className="text-center mt-6">
-          <span className="text-xs text-gray-400 font-medium">
-            Engineered & Powered by <strong className="text-indigo-600 font-extrabold">UpLogic</strong>
-          </span>
+          <a
+            href="https://uplogic.gr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 hover:text-indigo-600 font-medium transition-colors inline-block"
+          >
+            Engineered & Powered by <strong className="text-indigo-600 hover:underline font-extrabold">UpLogic</strong>
+          </a>
         </div>
       </div>
     </div>

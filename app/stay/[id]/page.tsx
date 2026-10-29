@@ -487,7 +487,15 @@ export default function DirectBookingMiniSite() {
       {/* Footer with UpLogic Branding */}
       <footer className="max-w-5xl mx-auto px-4 mt-14 pt-6 border-t border-slate-900 text-center text-xs text-slate-500">
         <p>
-          Direct Booking Engine by <strong>GreekHost</strong> · Engineered & Powered by <strong className="text-blue-400 font-extrabold">UpLogic</strong>
+          Direct Booking Engine by <strong>GreekHost</strong> · Engineered & Powered by{' '}
+          <a
+            href="https://uplogic.gr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:underline font-extrabold"
+          >
+            UpLogic
+          </a>
         </p>
       </footer>
     </div>

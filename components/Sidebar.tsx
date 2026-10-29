@@ -214,9 +214,14 @@ export default function Sidebar() {
 
         {/* UpLogic Signature */}
         <div className="pt-2 border-t border-gray-100 text-center">
-          <span className="text-[10px] text-gray-400 font-medium tracking-wide">
-            Powered by <strong className="text-indigo-600 font-extrabold">UpLogic</strong>
-          </span>
+          <a
+            href="https://uplogic.gr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-gray-400 hover:text-indigo-600 font-medium tracking-wide transition-colors inline-block"
+          >
+            Powered by <strong className="text-indigo-600 hover:underline font-extrabold">UpLogic</strong>
+          </a>
         </div>
       </div>
     </>
