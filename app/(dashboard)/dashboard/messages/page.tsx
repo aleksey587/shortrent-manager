@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Crown, Building2, Calendar, MessageSquare, Mail, Trash2, RefreshCw,
-  User, ExternalLink, Search, Sparkles, CheckCircle2, ShieldAlert, Euro, Link2
+  User, ExternalLink, Search, Sparkles, CheckCircle2, ShieldAlert, Euro, Link2,
+  Send, Copy, Check, Users, AlertCircle, ArrowUpRight, Flame, Code
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { el } from 'date-fns/locale'
@@ -49,7 +50,9 @@ interface IcalSourceRow {
 
 export default function SuperAdminHubPage() {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'overview' | 'properties' | 'support' | 'subscribers'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'properties' | 'campaign' | 'subscribers' | 'support'>('overview')
+  const [copiedEmail, setCopiedEmail] = useState(false)
+  const [copiedSql, setCopiedSql] = useState(false)
   const [loading, setLoading] = useState(true)
   const [syncingAll, setSyncingAll] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
@@ -110,6 +113,96 @@ export default function SuperAdminHubPage() {
   // Group properties by user_id to count unique active hosts
   const uniqueHostIds = Array.from(new Set(properties.map(p => p.user_id)))
   const totalRevenueTracked = bookings.reduce((sum, b) => sum + (b.total_price || 0), 0)
+
+  // User activity breakdown
+  const inactiveUserIds = uniqueHostIds.filter(uid => {
+    const userProps = properties.filter(p => p.user_id === uid)
+    const propIds = userProps.map(p => p.id)
+    const bCount = bookings.filter(b => propIds.includes(b.property_id)).length
+    const iCount = icalSources.filter(s => propIds.includes(s.property_id)).length
+    return bCount === 0 && iCount === 0
+  })
+
+  const configuredUserIds = uniqueHostIds.filter(uid => {
+    const userProps = properties.filter(p => p.user_id === uid)
+    const propIds = userProps.map(p => p.id)
+    const bCount = bookings.filter(b => propIds.includes(b.property_id)).length
+    const iCount = icalSources.filter(s => propIds.includes(s.property_id)).length
+    return bCount === 0 && iCount > 0
+  })
+
+  const activeUserIds = uniqueHostIds.filter(uid => {
+    const userProps = properties.filter(p => p.user_id === uid)
+    const propIds = userProps.map(p => p.id)
+    return bookings.filter(b => propIds.includes(b.property_id)).length > 0
+  })
+
+  const emailSubject = '🚀 Νέο GreekHost v3.0: Απευθείας Κρατήσεις 0% Προμήθεια & Νέο Mini-Site για το κατάλυμά σας!'
+  const emailBodyText = `Γεια σας!
+
+Είχατε δημιουργήσει λογαριασμό και καταχωρήσει το κατάλυμά σας στο GreekHost.
+
+Θέλουμε να σας ενημερώσουμε για τη νέα μεγάλη αναβάθμιση v3.0 (Powered by UpLogic) που σχεδιάστηκε για να αυξήσει τα καθαρά σας κέρδη και να αυτοματοποιήσει πλήρως τη διαχείρισή σας:
+
+🌐 1. Direct Booking Mini-Site (0% Προμήθειες!)
+Το κατάλυμά σας απέκτησε αυτόματα τη δική του σελίδα κρατήσεων! Οι επισκέπτες σας μπορούν πλέον να κλείνουν απευθείας με Κάρτα ή IRIS, γλιτώνοντας το 15-20% των προμηθειών της Airbnb & Booking.com.
+
+⚡ 2. Realtime 2-Way Channel Sync
+Αυτόματος συγχρονισμός ημερολογίων κάθε λίγα λεπτά, ώστε να μην έχετε ποτέ διπλοκρατήσεις (double bookings).
+
+📱 3. Δίγλωσσο Digital Guidebook + Εκτυπώσιμο QR Stand
+Ψηφιακός οδηγός επισκέπτη (Ελληνικά & Αγγλικά) με οδηγίες Wi-Fi, check-in, τοπικές προτάσεις και έτοιμο καρτελάκι QR για εκτύπωση μέσα στο σπίτι.
+
+🧹 4. Cleaning Hub & WhatsApp Scheduling
+Αυτόματος προγραμματισμός καθαριστριών σε κάθε check-out και αποστολή του μηνιαίου προγράμματος στο WhatsApp με 1 κλικ.
+
+👉 Συνδεθείτε τώρα στο λογαριασμό σας και δείτε τις νέες δυνατότητες:
+https://greekhost.vercel.app/dashboard
+
+Χρειάζεστε βοήθεια για να συνδέσετε τα ημερολόγιά σας ή να ενεργοποιήσετε τις απευθείας κρατήσεις; Απαντήστε απλά σε αυτό το email και η ομάδα της UpLogic θα σας εξυπηρετήσει άμεσα!
+
+Με εκτίμηση,
+Η ομάδα του GreekHost & UpLogic
+📧 info@uplogic.gr | 🌐 https://uplogic.gr`
+
+  const sqlCode = `-- Migration 009: Admin view for registered users with email and activity status
+-- Run this in Supabase SQL Editor: Dashboard > SQL Editor > New query
+
+CREATE OR REPLACE VIEW public.admin_users_overview WITH (security_invoker = false) AS
+SELECT 
+  u.id as user_id,
+  u.email,
+  u.created_at as registered_at,
+  u.last_sign_in_at,
+  COUNT(DISTINCT p.id) as properties_count,
+  COUNT(DISTINCT i.id) as icals_count,
+  COUNT(DISTINCT b.id) as bookings_count,
+  COALESCE(SUM(b.total_price), 0) as total_revenue,
+  CASE 
+    WHEN COUNT(DISTINCT b.id) > 0 THEN 'active'
+    WHEN COUNT(DISTINCT i.id) > 0 THEN 'configured'
+    WHEN COUNT(DISTINCT p.id) > 0 THEN 'stalled_after_property'
+    ELSE 'stalled_signup'
+  END as user_status
+FROM auth.users u
+LEFT JOIN public.properties p ON p.user_id = u.id
+LEFT JOIN public.ical_sources i ON i.property_id = p.id
+LEFT JOIN public.bookings b ON b.property_id = p.id
+GROUP BY u.id, u.email, u.created_at, u.last_sign_in_at;
+
+GRANT SELECT ON public.admin_users_overview TO anon, authenticated, service_role;`
+
+  const copyEmailToClipboard = () => {
+    navigator.clipboard.writeText(`Θέμα: ${emailSubject}\n\n${emailBodyText}`)
+    setCopiedEmail(true)
+    setTimeout(() => setCopiedEmail(false), 3000)
+  }
+
+  const copySqlToClipboard = () => {
+    navigator.clipboard.writeText(sqlCode)
+    setCopiedSql(true)
+    setTimeout(() => setCopiedSql(false), 3000)
+  }
 
   // Filtered properties
   const filteredProps = properties.filter(p =>
@@ -209,6 +302,15 @@ export default function SuperAdminHubPage() {
           }`}
         >
           📊 Επισκόπηση Χρηστών ({uniqueHostIds.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('campaign')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeTab === 'campaign' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <Flame size={13} className={activeTab === 'campaign' ? 'text-amber-300' : 'text-orange-500'} />
+          <span>📢 Re-engagement & Νέα v3.0 ({inactiveUserIds.length} Ανενεργοί)</span>
         </button>
         <button
           onClick={() => setActiveTab('properties')}
@@ -376,6 +478,190 @@ export default function SuperAdminHubPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: CAMPAIGN RE-ENGAGEMENT */}
+      {activeTab === 'campaign' && (
+        <div className="space-y-6">
+          {/* Funnel Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-tr from-amber-50 to-orange-50 border border-orange-200/80 rounded-3xl p-5 space-y-1 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-orange-800 uppercase tracking-wider">
+                  ⚠️ Ανενεργοί (0 Bookings / 0 iCal)
+                </span>
+                <span className="text-xl">💤</span>
+              </div>
+              <div className="text-3xl font-black text-orange-950">{inactiveUserIds.length} Χρήστες</div>
+              <p className="text-xs text-orange-800">
+                Καταχώρησαν ακίνητο αλλά κόλλησαν. Ιδανικοί για ενεργοποίηση!
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-tr from-blue-50 to-indigo-50 border border-blue-200/80 rounded-3xl p-5 space-y-1 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-blue-800 uppercase tracking-wider">
+                  ⏳ Σε Αναμονή (Έχουν iCal, 0 Bookings)
+                </span>
+                <span className="text-xl">🔗</span>
+              </div>
+              <div className="text-3xl font-black text-blue-950">{configuredUserIds.length} Χρήστες</div>
+              <p className="text-xs text-blue-800">
+                Συνέδεσαν ημερολόγιο αλλά περιμένουν κρατήσεις.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-tr from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-3xl p-5 space-y-1 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wider">
+                  🔥 Ενεργοί (Με Κρατήσεις & Τζίρο)
+                </span>
+                <span className="text-xl">✅</span>
+              </div>
+              <div className="text-3xl font-black text-emerald-950">{activeUserIds.length} Χρήστες</div>
+              <p className="text-xs text-emerald-800">
+                Χρησιμοποιούν ενεργά την πλατφόρμα.
+              </p>
+            </div>
+          </div>
+
+          {/* Email Template Card */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-gray-100 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-lg text-xs font-extrabold">
+                  <Sparkles size={13} className="text-amber-500" />
+                  <span>Έτοιμο Email Επαναπροσέγγισης (v3.0 Feature Announcement)</span>
+                </div>
+                <h3 className="font-extrabold text-gray-900 text-lg">
+                  Ανακοίνωση Νέων Δυνατοτήτων στους Ανενεργούς Χρήστες
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Στείλτε αυτό το email στους χρήστες που έφτιαξαν ακίνητο για να τους δείξετε το νέο Direct Booking & 0% προμήθειες!
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={copyEmailToClipboard}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  {copiedEmail ? <Check size={14} className="text-emerald-300" /> : <Copy size={14} />}
+                  <span>{copiedEmail ? 'Αντιγράφηκε!' : 'Αντιγραφή Όλου'}</span>
+                </button>
+                <a
+                  href={`mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBodyText)}`}
+                  className="bg-gray-900 hover:bg-black text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Send size={14} />
+                  <span>Άνοιγμα σε Email Client</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Email Subject & Body Box */}
+            <div className="space-y-3 bg-gray-50/80 p-5 rounded-2xl border border-gray-200/70">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase text-gray-500 tracking-wider block mb-1">
+                  Θέμα Email (Subject Line)
+                </span>
+                <p className="font-bold text-gray-900 text-sm bg-white p-3 rounded-xl border border-gray-200">
+                  {emailSubject}
+                </p>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-extrabold uppercase text-gray-500 tracking-wider block mb-1">
+                  Κείμενο Μηνύματος (Body Text)
+                </span>
+                <div className="bg-white p-4 rounded-xl border border-gray-200 text-xs text-gray-700 whitespace-pre-line leading-relaxed font-sans max-h-96 overflow-y-auto">
+                  {emailBodyText}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Inactive Properties List */}
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden space-y-4 p-6">
+            <div>
+              <h3 className="font-extrabold text-gray-900 text-base">
+                Ανενεργά Καταλύματα που Χρειάζονται Επαναπροσέγγιση ({inactiveUserIds.length} Χρήστες)
+              </h3>
+              <p className="text-xs text-gray-500">
+                Αυτοί οι ιδιοκτήτες ξεκίνησαν την καταχώρηση αλλά σταμάτησαν πριν λάβουν κρατήσεις:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {inactiveUserIds.map((uid, idx) => {
+                const userProps = properties.filter(p => p.user_id === uid)
+                return (
+                  <div key={uid} className="bg-gray-50/80 border border-gray-200/70 rounded-2xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
+                        Ανενεργός #{idx + 1}
+                      </span>
+                      <span className="font-mono text-[10px] text-gray-400">
+                        {uid.slice(0, 10)}...
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      {userProps.map(p => (
+                        <div key={p.id} className="flex items-center justify-between gap-2 pt-1 border-t border-gray-200/50">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color || '#3b82f6' }} />
+                            <span className="font-bold text-gray-900 text-xs">{p.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/stay/${p.id}`}
+                              target="_blank"
+                              className="text-[10px] text-purple-600 hover:underline font-bold flex items-center gap-0.5"
+                            >
+                              <span>Direct Site</span>
+                              <ExternalLink size={10} />
+                            </Link>
+                            <Link
+                              href={`/guide/${p.id}`}
+                              target="_blank"
+                              className="text-[10px] text-blue-600 hover:underline font-bold flex items-center gap-0.5"
+                            >
+                              <span>Οδηγός</span>
+                              <ExternalLink size={10} />
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Supabase SQL Migration Helper */}
+          <div className="bg-slate-900 text-slate-100 rounded-3xl p-6 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Code size={18} className="text-amber-400" />
+                <h4 className="font-bold text-white text-sm">
+                  Θέλετε να δείτε τα πραγματικά Email των χρηστών από το Supabase;
+                </h4>
+              </div>
+              <button
+                onClick={copySqlToClipboard}
+                className="bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                {copiedSql ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                <span>{copiedSql ? 'Αντιγράφηκε!' : 'Αντιγραφή SQL'}</span>
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Ανοίξτε το <strong>Supabase Dashboard &gt; SQL Editor &gt; New Query</strong>, κάντε επικόλληση και πατήστε <strong>Run</strong>. Αυτό θα συνδέσει αυτόματα τη λίστα χρηστών του Supabase Auth (`auth.users`) ώστε να βλέπετε τα ακριβή email τους (`...@gmail.com`) μέσα σε αυτό το dashboard!
+            </p>
           </div>
         </div>
       )}
