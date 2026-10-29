@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   const user = request.nextUrl.searchParams.get('user') || 'theodoros'
-  const email = (user === 'theodoros' || user === 'callisto') ? 'theodoroskolokuthas@gmail.com' : `${user}@gmail.com`
+  let email = `${user}@gmail.com`
+  if (user === 'theodoros' || user === 'callisto') {
+    email = 'theodoroskolokuthas@gmail.com'
+  } else if (user === 'admin' || user === 'alex' || user === 'gjokas') {
+    email = 'gjokas.al@gmail.com'
+  }
 
   const response = NextResponse.redirect(new URL('/dashboard', request.url))
   

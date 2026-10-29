@@ -140,6 +140,22 @@ export default function Sidebar() {
             <span>{label}</span>
           </Link>
         ))}
+
+        {isSuper && (
+          <Link
+            href="/dashboard/messages"
+            onClick={() => setMobileOpen(false)}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all mt-2 border',
+              pathname.startsWith('/dashboard/messages')
+                ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                : 'bg-amber-50/70 text-amber-800 border-amber-200 hover:bg-amber-100'
+            )}
+          >
+            <Inbox size={18} className="text-amber-600" />
+            <span>👑 Admin Panel & Support</span>
+          </Link>
+        )}
       </nav>
 
       <div className="px-3 pb-4 space-y-2">

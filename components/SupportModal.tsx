@@ -1,30 +1,65 @@
 'use client'
 
-import { useState } from 'react'
-import { MessageSquare, Mail, X, Send, CheckCircle2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MessageSquare, Mail, X, Send, CheckCircle2, RefreshCw } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 export default function SupportModal({ isMobile = false }: { isMobile?: boolean }) {
   const [open, setOpen] = useState(false)
+  const [senderEmail, setSenderEmail] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const supportEmail = 'gjokas.al@gmail.com'
+  const supabase = createClient()
 
-  const handleSendEmail = (e: React.FormEvent) => {
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setSenderEmail(user.email)
+      } else if (typeof document !== 'undefined') {
+        const match = document.cookie.match(/greekhost_magic_user=([^;]+)/)
+        if (match) setSenderEmail(decodeURIComponent(match[1]))
+      }
+    })
+  }, [])
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent(
-      subject ? `GreekHost — ${subject}` : 'GreekHost — Ερώτηση / Υποστήριξη'
-    )}&body=${encodeURIComponent(message)}`
+    setSending(true)
+    setErrorMsg(null)
 
-    window.location.href = mailtoUrl
-    setSent(true)
-    setTimeout(() => {
-      setSent(false)
-      setOpen(false)
-      setMessage('')
-      setSubject('')
-    }, 2500)
+    try {
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject,
+          message,
+          senderEmail,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Σφάλμα κατά την αποστολή')
+      }
+
+      setSent(true)
+      setTimeout(() => {
+        setSent(false)
+        setOpen(false)
+        setMessage('')
+        setSubject('')
+      }, 2200)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Σφάλμα κατά την αποστολή μηνύματος.')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -38,7 +73,10 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setOpen(false)}
+        >
           <div
             className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-gray-100 space-y-5 animate-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
@@ -51,7 +89,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-lg">Επικοινωνία & Υποστήριξη</h3>
-                  <p className="text-xs text-gray-500">Είμαστε εδώ για ό,τι χρειαστείτε</p>
+                  <p className="text-xs text-gray-500">Άμεση αποστολή στην ομάδα του GreekHost</p>
                 </div>
               </div>
               <button
@@ -62,7 +100,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
               </button>
             </div>
 
-            {/* Direct Email Card */}
+            {/* Direct Email Info Card */}
             <div className="bg-blue-50/80 border border-blue-100 rounded-2xl p-4 flex items-center justify-between">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
@@ -79,8 +117,22 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
               </a>
             </div>
 
-            {/* Quick Contact Form */}
-            <form onSubmit={handleSendEmail} className="space-y-3.5 pt-1">
+            {/* Contact Form */}
+            <form onSubmit={handleSendMessage} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-gray-800 mb-1">
+                  Το Email σας (για απάντηση)
+                </label>
+                <input
+                  type="email"
+                  value={senderEmail}
+                  onChange={e => setSenderEmail(e.target.value)}
+                  placeholder="π.χ. name@email.com"
+                  required
+                  className="w-full px-3.5 py-2.5 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-800 mb-1">
                   Θέμα Μηνύματος
@@ -100,29 +152,43 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
                   Το Μήνυμά σας
                 </label>
                 <textarea
+                  rows={4}
                   value={message}
                   onChange={e => setMessage(e.target.value)}
-                  placeholder="Γράψτε εδώ την ερώτηση ή την πρότασή σας..."
+                  placeholder="Περιγράψτε μας πώς μπορούμε να βοηθήσουμε..."
                   required
-                  rows={4}
                   className="w-full px-3.5 py-2.5 bg-white text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none shadow-2xs"
                 />
               </div>
 
-              {sent ? (
-                <div className="bg-emerald-50 text-emerald-800 text-xs font-semibold p-3 rounded-xl flex items-center justify-center gap-2 border border-emerald-200">
-                  <CheckCircle2 size={16} />
-                  <span>Το μήνυμα ετοιμάστηκε στο πρόγραμμα email σας!</span>
-                </div>
-              ) : (
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2"
-                >
-                  <Send size={15} />
-                  <span>Αποστολή Email</span>
-                </button>
+              {errorMsg && (
+                <p className="text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+                  ❌ {errorMsg}
+                </p>
               )}
+
+              <button
+                type="submit"
+                disabled={sending || sent}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {sent ? (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Το μήνυμα στάλθηκε επιτυχώς!</span>
+                  </>
+                ) : sending ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    <span>Αποστολή...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={15} />
+                    <span>Αποστολή Μηνύματος</span>
+                  </>
+                )}
+              </button>
             </form>
           </div>
         </div>
