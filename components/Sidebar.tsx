@@ -23,7 +23,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import SupportModal from '@/components/SupportModal'
 import InstallAppModal from '@/components/InstallAppModal'
-import WhatsNewModal from '@/components/WhatsNewModal'
+import { WhatsNewSidebarButton } from '@/components/WhatsNewModal'
 import ThemeCustomizerModal from '@/components/ThemeCustomizerModal'
 import { isSuperAdmin, getUserSubscription, isProUser, getUserTier } from '@/lib/permissions'
 import { useLanguage } from '@/lib/languageContext'
@@ -195,8 +195,8 @@ export default function Sidebar() {
           </Link>
         )}
 
-        {/* What's New & Upcoming Roadmap Modal */}
-        <WhatsNewModal />
+        {/* What's New & Upcoming Roadmap Modal Button */}
+        <WhatsNewSidebarButton />
 
         {/* Install App Trigger Button */}
         <InstallAppModal />
