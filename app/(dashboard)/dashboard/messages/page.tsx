@@ -348,14 +348,24 @@ export default function SuperAdminHubPage() {
                       />
                       <h4 className="font-extrabold text-gray-900 text-sm">{p.name}</h4>
                     </div>
-                    <Link
-                      href={`/guide/${p.id}`}
-                      target="_blank"
-                      className="text-[11px] text-blue-600 hover:underline font-bold flex items-center gap-1 shrink-0"
-                    >
-                      <span>Οδηγός</span>
-                      <ExternalLink size={11} />
-                    </Link>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link
+                        href={`/stay/${p.id}`}
+                        target="_blank"
+                        className="text-[11px] text-purple-600 hover:underline font-bold flex items-center gap-0.5"
+                      >
+                        <span>Direct Site</span>
+                        <ExternalLink size={10} />
+                      </Link>
+                      <Link
+                        href={`/guide/${p.id}`}
+                        target="_blank"
+                        className="text-[11px] text-blue-600 hover:underline font-bold flex items-center gap-0.5"
+                      >
+                        <span>Οδηγός</span>
+                        <ExternalLink size={10} />
+                      </Link>
+                    </div>
                   </div>
 
                   <div className="text-xs text-gray-500 space-y-1">

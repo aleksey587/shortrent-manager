@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Plus, Trash2, RefreshCw, Home, ChevronDown, ChevronUp,
-  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock, Sparkles, Wand2, Zap
+  MapPin, Hash, Palette, CalendarDays, Save, Euro, Link2, X, Edit2, Check, Clock, Sparkles, Wand2, Zap, Globe, ExternalLink
 } from 'lucide-react'
 import MonthlyPricingPanel from '@/components/properties/MonthlyPricingPanel'
 import ChannelConnectModal from '@/components/properties/ChannelConnectModal'
@@ -738,7 +738,17 @@ export default function PropertiesPage() {
                       <p className="text-xs text-gray-400 mt-1 truncate">{prop.description}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <Link
+                      href={`/stay/${prop.id}`}
+                      target="_blank"
+                      className="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                      title="Προσωπική ιστοσελίδα απευθείας κρατήσεων (0% προμήθεια)"
+                    >
+                      <Globe size={12} className="text-purple-600" />
+                      <span>🌐 Direct Booking Site</span>
+                    </Link>
+
                     <button
                       onClick={() => setSelectedChannelProp(prop)}
                       className="flex items-center gap-1 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"

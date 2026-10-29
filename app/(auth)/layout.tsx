@@ -10,6 +10,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <p className="text-gray-500 text-sm mt-1">Διαχείριση Βραχυχρόνιων Μισθώσεων & ΑΑΔΕ</p>
         </div>
         {children}
+        <div className="text-center mt-6">
+          <span className="text-xs text-gray-400 font-medium">
+            Engineered & Powered by <strong className="text-indigo-600 font-extrabold">UpLogic</strong>
+          </span>
+        </div>
       </div>
     </div>
   )

@@ -597,6 +597,9 @@ export default function PublicGuestGuidebook() {
               ? 'Feel free to message your host anytime through the booking platform.'
               : 'Είμαστε πάντα στη διάθεσή σας για οποιαδήποτε ερώτηση ή πληροφορία.'}
           </p>
+          <p className="text-[10px] text-slate-500 pt-1">
+            GreekHost · Engineered & Powered by <strong className="text-blue-400 font-bold">UpLogic</strong>
+          </p>
         </div>
       </div>
     </div>

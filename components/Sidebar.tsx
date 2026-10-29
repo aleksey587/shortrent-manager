@@ -190,7 +190,7 @@ export default function Sidebar() {
               <span>{language === 'en' ? 'Upgrade to Pro' : 'Αναβάθμιση σε Pro'}</span>
             </div>
             <p className="text-[11px] text-blue-700 mt-0.5">
-              {language === 'en' ? 'From €4.08 / mo' : 'Από 4,08 € / μήνα'}
+              {language === 'en' ? 'From €6.65 / mo' : 'Από 6,65 € / μήνα'}
             </p>
           </Link>
         )}
@@ -211,6 +211,13 @@ export default function Sidebar() {
           <LogOut size={18} />
           {t('nav.logout', 'Αποσύνδεση')}
         </button>
+
+        {/* UpLogic Signature */}
+        <div className="pt-2 border-t border-gray-100 text-center">
+          <span className="text-[10px] text-gray-400 font-medium tracking-wide">
+            Powered by <strong className="text-indigo-600 font-extrabold">UpLogic</strong>
+          </span>
+        </div>
       </div>
     </>
   )

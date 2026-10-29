@@ -78,7 +78,7 @@ export default function ProFeatureModal({
             href="/dashboard/pricing"
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-extrabold py-3.5 px-4 rounded-2xl text-xs transition-all shadow-md shadow-purple-500/25"
           >
-            <span>Αναβάθμιση σε Pro (από 4,08€/μήνα)</span>
+            <span>Αναβάθμιση σε Pro (από 6,65€/μήνα)</span>
             <ArrowRight size={14} />
           </Link>
 

@@ -2,10 +2,8 @@
 
 import { useState } from 'react'
 import {
-  Sparkles, X, Gift, Check, ArrowRight, Zap, Globe, MessageSquare,
-  SprayCan, Calendar, Smartphone, FileText, ChevronRight, Rocket
+  Sparkles, X, Check, Rocket
 } from 'lucide-react'
-import Link from 'next/link'
 
 export default function WhatsNewModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -23,7 +21,7 @@ export default function WhatsNewModal() {
           <span>✨ Τι Νέο Υπάρχει</span>
         </div>
         <span className="bg-indigo-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-          v2.5
+          v3.0
         </span>
       </button>
 
@@ -52,7 +50,7 @@ export default function WhatsNewModal() {
               </div>
               <div>
                 <div className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider mb-0.5">
-                  <span>GreekHost Changelog & Roadmap</span>
+                  <span>GreekHost v3.0 · Powered by UpLogic</span>
                 </div>
                 <h3 className="font-extrabold text-gray-900 text-lg">Τι Νέο Υπάρχει & Επόμενες Αναβαθμίσεις</h3>
               </div>
@@ -69,7 +67,7 @@ export default function WhatsNewModal() {
                 }`}
               >
                 <Sparkles size={13} className="text-amber-500" />
-                <span>🎉 Νέες Λειτουργίες (v2.5)</span>
+                <span>🎉 Νέες Λειτουργίες (v3.0 Live)</span>
               </button>
               <button
                 onClick={() => setActiveTab('upcoming')}
@@ -80,127 +78,109 @@ export default function WhatsNewModal() {
                 }`}
               >
                 <Rocket size={13} className="text-purple-600" />
-                <span>🔮 Έρχεται Σύντομα (v3.0)</span>
+                <span>🔮 Επόμενα (v3.5 Roadmap)</span>
               </button>
             </div>
 
-            {/* TAB 1: NEWLY RELEASED (v2.5) */}
+            {/* TAB 1: NEWLY RELEASED (v3.0) */}
             {activeTab === 'released' && (
               <div className="space-y-3.5 animate-in fade-in duration-150">
-                {/* Feature 1: Cleaning Hub */}
+                {/* Feature 1: Direct Booking Mini-Site */}
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-4 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold text-gray-900 text-xs">
+                      <span className="p-1.5 bg-purple-200 text-purple-800 rounded-lg text-sm">🌐</span>
+                      <span>Direct Booking Mini-Site & Engine (0% Προμήθειες!)</span>
+                    </div>
+                    <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-2 py-0.5 rounded-md">
+                      ΝΕΟ · Live
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-700 leading-relaxed pl-8">
+                    Κάθε ακίνητο απέκτησε <strong>δική του ιστοσελίδα απευθείας κρατήσεων (`/stay/[id]`)</strong> με έλεγχο διαθεσιμότητας σε πραγματικό χρόνο και επιλογή πληρωμής Κάρτας ή IRIS!
+                  </p>
+                </div>
+
+                {/* Feature 2: 2-Way Channel Manager */}
                 <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-gray-900 text-xs">
-                      <span className="p-1.5 bg-teal-100 text-teal-700 rounded-lg text-sm">🧹</span>
-                      <span>Διαχείριση & Πρόγραμμα Καθαριστριών (Cleaning Hub)</span>
+                      <span className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm">⚡</span>
+                      <span>2-Way Channel Manager & Συνεχής Auto-Sync</span>
                     </div>
-                    <span className="text-[10px] bg-teal-50 text-teal-700 font-bold border border-teal-200 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 px-2 py-0.5 rounded-md">
                       Live
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 leading-relaxed pl-8">
-                    Αυτόματος προγραμματισμός καθαρισμών σε κάθε check-out, ειδοποιήσεις <strong>Same-Day Turnaround (⚠️)</strong> και αποστολή ολόκληρου του μηνιαίου προγράμματος στο WhatsApp με 1 κλικ!
+                    Άμεση αποστολή τιμών σε Airbnb & Booking.com μέσω Channex API, συνεχής αυτόματος συγχρονισμός iCal κάθε 3 λεπτά και αυτόματη ανίχνευση ακυρώσεων.
                   </p>
                 </div>
 
-                {/* Feature 2: Guest Messaging */}
-                <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 font-bold text-gray-900 text-xs">
-                      <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm">📬</span>
-                      <span>Αυτόματα Μηνύματα Επισκεπτών & Custom Templates</span>
-                    </div>
-                    <span className="text-[10px] bg-blue-50 text-blue-700 font-bold border border-blue-200 px-2 py-0.5 rounded-md">
-                      Live
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed pl-8">
-                    5 έτοιμα στάδια επικοινωνίας σε <strong>🇬🇷 Ελληνικά & 🇺🇸 English</strong>, έξυπνη αντικατάσταση μεταβλητών (όνομα, Wi-Fi, lockbox) και δυνατότητα δημιουργίας δικών σας προτύπων.
-                  </p>
-                </div>
-
-                {/* Feature 3: Digital Guidebook */}
+                {/* Feature 3: Digital Guidebook + Perks + QR */}
                 <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-gray-900 text-xs">
                       <span className="p-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm">📱</span>
-                      <span>Digital Guest Guidebook (Mobile Web App)</span>
+                      <span>Δίγλωσσο Digital Guidebook + Perks + Εκτύπωση QR</span>
                     </div>
                     <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 px-2 py-0.5 rounded-md">
                       Live
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 leading-relaxed pl-8">
-                    Ένας πανέμορφος ψηφιακός οδηγός για το κινητό του επισκέπτη (κωδικός Wi-Fi με 1-click copy, οδηγίες A/C/θερμοσίφωνα, χάρτης Google Maps και τοπικές προτάσεις).
+                    Ψηφιακός οδηγός σε <strong>🇬🇷 Ελληνικά & 🇬🇧 English</strong>, καρτέλα ταξιδιωτικών προνομίων (ενοικιάσεις αυτοκινήτων, ακτοπλοϊκά, μουσεία) και εκτυπώσιμη κάρτα A4 με QR Code!
                   </p>
                 </div>
 
-                {/* Feature 4: Timeline Calendar */}
+                {/* Feature 4: Cleaning Hub & Guest Messaging */}
                 <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-gray-900 text-xs">
-                      <span className="p-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm">📅</span>
-                      <span>Multi-Property Timeline Ημερολόγιο</span>
+                      <span className="p-1.5 bg-teal-100 text-teal-700 rounded-lg text-sm">🧹</span>
+                      <span>Cleaning Hub & Αυτόματοι Κανόνες Μηνυμάτων WhatsApp</span>
                     </div>
-                    <span className="text-[10px] bg-purple-50 text-purple-700 font-bold border border-purple-200 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] bg-teal-50 text-teal-700 font-bold border border-teal-200 px-2 py-0.5 rounded-md">
                       Live
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 leading-relaxed pl-8">
-                    Οριζόντιο Timeline για ταυτόχρονη προβολή όλων των ακινήτων cross-platform (Airbnb, Booking.com, VRBO) όπως στα μεγάλα διεθνή PMS.
+                    Μηνιαίο πρόγραμμα καθαριστριών με Same-Day Turnaround alerts και προγραμματισμένοι κανόνες επικοινωνίας επισκεπτών.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* TAB 2: UPCOMING MAJOR UPDATE (v3.0) */}
+            {/* TAB 2: UPCOMING ROADMAP (v3.5) */}
             {activeTab === 'upcoming' && (
               <div className="space-y-3.5 animate-in fade-in duration-150">
-                {/* Upcoming Feature 1: Direct Booking Mini-Site */}
-                <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-200 rounded-2xl p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 font-extrabold text-purple-950 text-xs">
-                      <span className="p-1.5 bg-purple-200 text-purple-800 rounded-lg text-sm">🌐</span>
-                      <span>Direct Booking Mini-Site & Engine (Χωρίς Προμήθειες!)</span>
-                    </div>
-                    <span className="text-[10px] bg-purple-600 text-white font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      Σύντομα
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-700 leading-relaxed pl-8">
-                    Κάθε ακίνητο αποκτά <strong>δική του προσωπική ιστοσελίδα απευθείας κρατήσεων</strong>. Οι επισκέπτες κάνουν κράτηση απευθείας με κάρτα (Stripe) ή IRIS, <strong>γλιτώνοντας το 15-20% των προμηθειών του Airbnb</strong>!
-                  </p>
-                </div>
-
-                {/* Upcoming Feature 2: Direct In-App Messaging */}
-                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-extrabold text-blue-950 text-xs">
-                      <span className="p-1.5 bg-blue-200 text-blue-800 rounded-lg text-sm">💬</span>
-                      <span>Unified In-App Chat Inbox</span>
+                      <span className="p-1.5 bg-blue-200 text-blue-800 rounded-lg text-sm">🤖</span>
+                      <span>AI Smart Pricing & Dynamic Rate Optimizer</span>
                     </div>
                     <span className="text-[10px] bg-blue-600 text-white font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      Σύντομα
+                      v3.5
                     </span>
                   </div>
                   <p className="text-xs text-gray-700 leading-relaxed pl-8">
-                    Ενιαίο panel συνομιλιών για να διαβάζετε και να απαντάτε στα μηνύματα των επισκεπτών από όλες τις πλατφόρμες απευθείας μέσα από το GreekHost.
+                    Αυτόματες προτάσεις τιμών ανά ημέρα βάσει ζήτησης περιοχής, πληρότητας και εποχικότητας για αύξηση εσόδων έως +25%.
                   </p>
                 </div>
 
-                {/* Upcoming Feature 3: Realtime 2-Way Channel API */}
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 font-extrabold text-emerald-950 text-xs">
-                      <span className="p-1.5 bg-emerald-200 text-emerald-800 rounded-lg text-sm">⚡</span>
-                      <span>2-Way Realtime Channel Sync</span>
+                      <span className="p-1.5 bg-emerald-200 text-emerald-800 rounded-lg text-sm">🔐</span>
+                      <span>Smart Lock Automated PIN Generator</span>
                     </div>
                     <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      Σύντομα
+                      v3.5
                     </span>
                   </div>
                   <p className="text-xs text-gray-700 leading-relaxed pl-8">
-                    Αυτόματη αλλαγή τιμών και διαθεσιμότητας σε πραγματικό χρόνο απευθείας στα portals (Airbnb, Booking.com, VRBO) μέσα σε 2 δευτερόλεπτα.
+                    Σύνδεση με έξυπνες κλειδαριές (Nuki, Yale, TTLock) για αυτόματη δημιουργία μοναδικού κωδικού PIN ανά κράτηση.
                   </p>
                 </div>
               </div>
@@ -208,7 +188,9 @@ export default function WhatsNewModal() {
 
             {/* Footer */}
             <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-[11px] text-gray-400 font-medium">GreekHost Platform 2026</span>
+              <span className="text-[11px] text-gray-400 font-medium">
+                GreekHost Platform · Engineered & Powered by <strong className="text-indigo-600 font-extrabold">UpLogic</strong>
+              </span>
               <button
                 onClick={() => setIsOpen(false)}
                 className="bg-gray-900 hover:bg-black text-white font-bold py-2 px-4 rounded-xl text-xs transition-colors"
