@@ -13,7 +13,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
   const [sent, setSent] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const supportEmail = 'gjokas.al@gmail.com'
+  const supportEmail = 'info@uplogic.gr'
   const supabase = createClient()
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export default function SupportModal({ isMobile = false }: { isMobile?: boolean 
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-lg">Επικοινωνία & Υποστήριξη</h3>
-                  <p className="text-xs text-gray-500">Άμεση αποστολή στην ομάδα του GreekHost</p>
+                  <p className="text-xs text-gray-500">Άμεση υποστήριξη από την ομάδα της UpLogic</p>
                 </div>
               </div>
               <button

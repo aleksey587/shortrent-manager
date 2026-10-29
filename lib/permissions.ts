@@ -7,6 +7,7 @@ export interface UserSubscription {
 
 export const SUPER_ADMIN_EMAILS = [
   'gjokas.al@gmail.com',
+  'info@uplogic.gr',
 ]
 
 // Registered Pro / Paid subscribers

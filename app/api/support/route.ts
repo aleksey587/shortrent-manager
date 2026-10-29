@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
 
     const userEmail = senderEmail || user?.email || 'Χρήστης GreekHost'
     const userId = user?.id || null
-    const targetEmail = 'gjokas.al@gmail.com'
+    const targetEmail = 'info@uplogic.gr'
 
-    // 1. Send direct email to gjokas.al@gmail.com via FormSubmit API
+    // 1. Send direct email to info@uplogic.gr via FormSubmit API
     try {
       await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
         method: 'POST',
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Το μήνυμα στάλθηκε επιτυχώς στο gjokas.al@gmail.com!',
+      message: 'Το μήνυμα στάλθηκε επιτυχώς στο info@uplogic.gr!',
     })
   } catch (err: any) {
     console.error('Support API error:', err)
